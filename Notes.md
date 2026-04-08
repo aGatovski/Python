@@ -194,3 +194,176 @@ re.search(pattern, string,flags=0)
 
 import re
 re.search("")
+
+# OOP
+
+tuple is imutable 
+
+# classes
+class Student:
+    def __init__(name,house): #instance method
+    self.name = name
+    self.house = house
+    if not name:
+        raise ValueError("Missing name")
+
+def get_st():
+    
+    student.name = ""
+    student.house = ""
+    try:
+        return Student(name,house )
+    except Value:
+
+    return student;
+
+__str__     # see your object as a string
+
+def __str__(self):
+    return f"{self.name}"
+
+# @property , decorators
+
+# getter,setter
+
+    @property == getter
+    def house(self):
+        return self._house
+# 
+    @house.setter
+    def house(self,house):
+        if house not in []:
+            raise ValueError("Invalid")
+            self._house = house
+
+# @classmethod
+    def sort(cls,name):
+        print(random.choice(cls.houses))
+
+cls refers to the class
+
+Just like self refers to an instance,
+cls refers to the class (Hat in this case).
+
+@classmethod
+def get(cls):
+    name = input("dd")
+    house=
+    return cls()
+
+student  = Student.get()
+
+# @staticmethod iheritance
+class Student:
+    def __init__(self,name,house):
+        self.name = name
+        self.house = house
+
+class Proffessor:
+    def __init__(self,name,sub):
+        self.name = name
+        self.sub = sub
+
+class Wizard:
+    def __init__(self,name):
+        if..
+
+        self.name = name
+
+class Student(Wizard):
+    def __init__(self,name,house):
+        super().__init__(name)
+        self.house = house
+
+class Proffessor(Wizard):
+    def __init__(self,name,sub):
+        super().__init__(name)
+        self.sub = sub
+
+# exceptions
+    BaseException
+        KeyboardInterrupt
+        Exception
+            ...
+
+
+# operator overloading
+    + da pravi drugo
+
+def Vault:
+    def __init__(self, galleons=0,sickles=0,knuts=0):
+        self.galle = galle
+
+    def __str__(self):
+        return f"{self} ..."
+
+    def __add__(self,other):
+        return Vault(self.gall + other.gall,....)
+
+# set
+
+house = set()
+
+# global var
+ok to read global var not write to
+
+def fybc(n):
+    global balance
+    balance+=n
+
+if you have a same var with same name in method it will shadow the global
+
+__init__ variables are visible to all methods in a class
+
+# constants
+# type hints
+
+pip install mypy
+
+number: int = int(input(""dai chislo))
+def func(n: int)
+
+def func(n: int) -> str:
+    return "meow\n" * n
+
+# docstrings
+def func():
+    """comment for method"""
+
+# argparse
+import argparse
+parser = argparse.ArgumentParser(description= "sss")
+parser.add_argument("-n",default=1, help="print...",type=int)
+args = parser.parse_args()
+
+# unpacking
+
+def total(a,b,c):
+    return a*1 + b*2 + c*3
+
+alp = [100,50,25]
+
+print(total(*coints),"c") # unpacking with a star
+
+alp = {"a":100,"b":50,"c":25}
+print(total(coints["a"],coints["b"],coins["c"]))
+
+# puts them key=value
+# but ** gives only values
+print(total(**coints),"c") # unpacking with a star
+
+# *args, **kwargs
+def f(*args,**kwargs):
+    kwargs = named arguments
+
+# map apply a func to smth
+map(func, iterable,...)
+
+def yell(*words):
+    uppercase = map(str.upper,words)
+    print(*uppercase)
+
+# list comprehension
+def yell(*words):
+    uppercase = [word.upper() for word in words]
+    print(*uppercase)
