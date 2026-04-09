@@ -32,7 +32,7 @@ if elif else
  match ? === switch
 
  match name:
-    case "A" | "C":
+    case "A" | "C": # or
         print
     case B:
 
