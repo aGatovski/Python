@@ -1,2 +1,2 @@
 import pytest
-from transaction import Transaction
+from expense_tracker.transaction import Transaction
