@@ -11,9 +11,7 @@ class Transaction:
     ]
 
     TRANSACTION_CATEGORIES_LOWER = [c.lower() for c in TRANSACTION_CATEGORIES]
-
     DATE_PATTERN = re.compile(r"^20\d{2}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$")
-  
 
     def __init__(self, date: str, description: str, amount: float, category=None):
         if not self.DATE_PATTERN.match(date):

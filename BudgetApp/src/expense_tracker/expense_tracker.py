@@ -12,7 +12,6 @@ def main():
     # get_user_input(TRANSACTION_FILE)
     summarize_expenses(TRANSACTION_FILE)
 
-
 def get_user_input(transaction_file_path):
     while True:
         expense_type = input("What info are you providing? File or 1 Transaction?")
@@ -153,11 +152,9 @@ def summarize_expenses(transaction_file_path):
         df,
     )
 
-
 def check_budget_status():
     while True:
         print("Check budget status for a specific month or a time period?")
-
 
 # only through when we run this file
 if __name__ == "__main__":
