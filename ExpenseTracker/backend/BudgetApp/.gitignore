@@ -1,0 +1,21 @@
+# Virtual environment — never commit this
+venv/
+
+# Python cache files — auto-generated, not needed
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache
+
+# Test coverage reports
+.coverage
+htmlcov/
+
+# IDE files
+.vscode/
+.idea/
+
+# Data files you don't want public
+user_data/
+
+.clinerules
