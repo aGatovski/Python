@@ -11,7 +11,7 @@ export default function Dashboard() {
 	})();
 
 	useEffect(() => {
-		getTransactions().then(res => setTransactions(res.data));
+		getTransactions({ month: currentMonth }).then(res => setTransactions(res.data));
 		getSummary(currentMonth)
 			.then(res => setSummary(res.data))
 			.catch(() => setSummary(null));
@@ -19,7 +19,7 @@ export default function Dashboard() {
 
 	return (
 		<div style={{ padding: '1.5rem' }}>
-			<h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>Dashboard</h1>
+			<h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>Monthly Dashboard</h1>
 
 			{/* Summary cards */}
 			<div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
@@ -44,12 +44,12 @@ export default function Dashboard() {
 			</div>
 
 			{/* Recent transactions */}
-			<h2 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '0.5rem' }}>Recent Transactions</h2>
+			<h2 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '0.5rem' }}>Monthly Transactions</h2>
 			{transactions.length === 0 ? (
 				<p style={{ color: '#9ca3af' }}>No transactions yet.</p>
 			) : (
 				<ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-					{transactions.slice(-5).reverse().map((t, i) => (
+					{transactions.reverse().map((t, i) => (
 						<li key={i} style={{ borderBottom: '1px solid #e5e7eb', padding: '0.5rem 0', display: 'flex', justifyContent: 'space-between' }}>
 							<span>
 								{t.description}{' '}

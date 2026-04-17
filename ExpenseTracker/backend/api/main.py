@@ -20,23 +20,13 @@ def load_df() -> pd.DataFrame:
     """Read the CSV file and return a clean DataFrame."""
     df = pd.read_csv(
         CSV_PATH,
-        header=None,                                          # CSV has no header row
-        names=["date", "category", "description", "amount"]  # assign column names manually
+        header=None,                                        
+        names=["date", "category", "description", "amount"]  
     )
+
     df["amount"] = pd.to_numeric(df["amount"], errors="coerce")
-    # pd.to_numeric converts the amount column to numbers.
-    # errors="coerce" means: if a value cannot be converted (e.g. a typo),
-    # replace it with NaN instead of crashing.
-
-
-    # THIS IS DEFENSIVE NOT REALLY NEEDED UNLESS I BREAK SMTH
     df["date"] = pd.to_datetime(df["date"]).dt.strftime("%Y-%m-%d")
-    # pd.to_datetime parses the date strings into proper date objects.
-    # .dt.strftime("%Y-%m-%d") converts them back to strings in a consistent format.
-    # This ensures all dates look like "2026-03-15" regardless of how they were stored.
-
     df = df.dropna(subset=["amount"])
-    # Remove any rows where amount could not be parsed (the NaN values from above).
 
     return df
 
@@ -57,7 +47,6 @@ def get_transactions(
     df = load_df()
 
     if month:
-        # .str.startswith(month) keeps only rows where the date starts with "2026-03"
         df = df[df["date"].str.startswith(month)]
     
     if category:
