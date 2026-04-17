@@ -178,7 +178,7 @@ function Transactions() {
                     padding: '0.6rem', borderBottom: '1px solid #eee', textAlign: 'right',
                     color: t.amount < 0 ? '#c62828' : '#2e7d32', fontWeight: 'bold'
                   }}>
-                    {t.amount >= 0 ? '+' : ''}{t.amount.toFixed(2)} BGN
+                    {t.amount >= 0 ? '+' : ''}{t.amount.toFixed(2)} EUR
                   </td>
                 </tr>
               ))}
