@@ -1,8 +1,11 @@
-from fastapi import FastAPI, Query, HTTPException
+from fastapi import FastAPI, Query, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import pandas as pd
 from pathlib import Path
+import csv
+from src.expense_tracker.transaction import Transaction
+import io
 
 app = FastAPI(title="Budget Tracker API", version="1.0.0")
 
@@ -98,12 +101,58 @@ def add_transaction(transaction: TransactionIn):
     # 2. Validate it against the TransactionIn model
     # 3. Pass it as a TransactionIn object to this function
     # If validation fails, FastAPI returns 422 automatically.
-
-    new_line = (
-        f"{transaction.date},{transaction.category},"
-        f"{transaction.description},{transaction.amount}\n"
-    )
-    with open(CSV_PATH, "a") as file:
-        file.write(new_line)
+    with open(CSV_PATH, "a", newline="") as file:
+        writer = csv.writer(file)
+        writer.writerow([
+            transaction.date,
+            transaction.category,
+            transaction.description,
+            transaction.amount,
+        ])
 
     return {"message": "Transaction added successfully", "transaction": transaction}
+
+@app.post("/api/import", status_code=201)
+async def add_transactions(file: UploadFile = File(...)):
+    """Upload a CSV file and append its transactions to the main CSV."""
+
+    content = await file.read()
+    text = content.decode("utf-8-sig")
+    reader = csv.DictReader(io.StringIO(text))
+
+    if not reader.fieldnames:
+        raise HTTPException(status_code=422, detail="Uploaded file appears to be empty or not a valid CSV")
+
+    try:
+        date_col   = next(col for col in reader.fieldnames if "date"        in col.lower())
+        desc_col   = next(col for col in reader.fieldnames if "description" in col.lower())
+        amount_col = next(col for col in reader.fieldnames if "amount"      in col.lower())
+    except StopIteration:
+        raise HTTPException(
+            status_code=422,
+            detail=f"CSV is missing required columns (date / description / amount). "
+                   f"Found: {reader.fieldnames}"
+        )
+
+    imported = 0
+    skipped  = 0
+    with open(CSV_PATH, "a", newline="") as out_file:
+        for row in reader:
+            try:
+                date_str = pd.to_datetime(row[date_col]).strftime("%Y-%m-%d")
+                desc     = row[desc_col].strip()
+                # remove thousands separators before converting
+                amount   = float(row[amount_col].strip().replace(",", ""))
+                category = Transaction.getCategory(description=desc)
+                out_file.write(f"{date_str},{category},{desc},{amount}\n")
+                imported += 1
+            except (ValueError, KeyError):
+                skipped += 1 
+
+    return {
+        "message":  f"Import complete: {imported} rows added, {skipped} skipped.",
+        "imported": imported,
+        "skipped":  skipped,
+    }
+        
+
