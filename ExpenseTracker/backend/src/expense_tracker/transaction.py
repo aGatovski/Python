@@ -29,11 +29,12 @@ class Transaction:
     def __str__(self):
         return (f"Transaction details: Date: {self.date} Category: {self.category} Description: {self.description} Amount: {self.amount}")
     
-    def getCategory(self, description):
-        if description.lower() in self.TRANSACTION_CATEGORIES_LOWER:
+    @staticmethod
+    def getCategory(description):
+        if description.lower() in Transaction.TRANSACTION_CATEGORIES_LOWER:
             # return the properly-cased version
-            idx = self.TRANSACTION_CATEGORIES_LOWER.index(description.lower())
-            return self.TRANSACTION_CATEGORIES[idx]
+            idx = Transaction.TRANSACTION_CATEGORIES_LOWER.index(description.lower())
+            return Transaction.TRANSACTION_CATEGORIES[idx]
 
         desc = description.lower()
         match desc:
