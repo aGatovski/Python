@@ -13,3 +13,11 @@ export const getCategories = () =>
 
 export const addTransaction = (data) =>
     axios.post(`${BASE_URL}/transactions`, data);
+
+export const addTransactions = (file) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return axios.post(`${BASE_URL}/import`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+    });
+};
