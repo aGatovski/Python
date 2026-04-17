@@ -6,6 +6,7 @@ from pathlib import Path
 import csv
 from src.expense_tracker.transaction import Transaction
 import io
+import os
 
 app = FastAPI(title="Budget Tracker API", version="1.0.0")
 
@@ -18,9 +19,17 @@ app.add_middleware(
 )
 
 CSV_PATH = Path(__file__).parent.parent / "src" / "expense_tracker" / "TRANSACTION_FILE.csv"
+_cache = {}
+_cache_mtime = {}
 
 def load_df() -> pd.DataFrame:
     """Read the CSV file and return a clean DataFrame."""
+    mtime = os.path.getmtime(CSV_PATH)
+
+    if CSV_PATH in _cache and _cache_mtime[CSV_PATH] == mtime:
+        return _cache[CSV_PATH]
+
+
     df = pd.read_csv(
         CSV_PATH,
         header=None,                                        
@@ -31,7 +40,10 @@ def load_df() -> pd.DataFrame:
     df["date"] = pd.to_datetime(df["date"]).dt.strftime("%Y-%m-%d")
     df = df.dropna(subset=["amount"])
 
-    return df
+    _cache[CSV_PATH] = df
+    _cache_mtime[CSV_PATH] = mtime
+    
+    return df.copy()
 
 class TransactionIn(BaseModel):
     date: str
