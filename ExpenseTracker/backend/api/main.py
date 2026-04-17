@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Query, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from typing import Literal
 import pandas as pd
 from pathlib import Path
 import csv
@@ -27,7 +28,7 @@ def load_df() -> pd.DataFrame:
     mtime = os.path.getmtime(CSV_PATH)
 
     if CSV_PATH in _cache and _cache_mtime[CSV_PATH] == mtime:
-        return _cache[CSV_PATH]
+        return _cache[CSV_PATH].copy()
 
 
     df = pd.read_csv(
@@ -49,7 +50,7 @@ class TransactionIn(BaseModel):
     date: str
     description: str
     amount: float
-    category: str
+    category: Literal["Groceries", "Gas", "Transport", "Entertainment", "Sport", "Other"]
 
 @app.get("/api/transactions")
 def get_transactions(
