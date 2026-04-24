@@ -10,12 +10,15 @@ from utils.auth import get_current_user
 
 router = APIRouter()
 
-DEFAULT_CATEGORIES = [
-    "Groceries", "Rent", "Utilities", "Transport", "Dining",
-    "Entertainment", "Health", "Clothing", "Education", "Savings",
-    "Subscriptions", "Travel", "Insurance", "Other",
-]
 
+def get_user_categories(db: Session, user_id: int) -> List[Category]:
+    """Get all available categories for a user (defaults + user-defined)."""
+    return (
+        db.query(Category)
+        .filter(Category.user_id == user_id)
+        .order_by(Category.name.desc())
+        .all()
+    )
 
 @router.get("", response_model=List[CategoryOut])
 def list_categories(
@@ -23,12 +26,7 @@ def list_categories(
     current_user: User = Depends(get_current_user),
 ):
     """Return default categories plus user-defined ones."""
-    return (
-        db.query(Category)
-        .filter((Category.is_default == True) | (Category.user_id == current_user.id))
-        .order_by(Category.is_default.desc(), Category.name)
-        .all()
-    )
+    return get_user_categories(db, current_user.id)
 
 
 @router.post("", response_model=CategoryOut, status_code=status.HTTP_201_CREATED)

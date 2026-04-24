@@ -14,6 +14,4 @@ class Goal(Base):
     current_amount: Mapped[float] = mapped_column(default=0.0)
     deadline: Mapped[Optional[date]] = mapped_column(nullable=True)
     priority: Mapped[str] = mapped_column(String, default="medium")  # "low" | "medium" | "high"
-    # is_completed: Mapped[bool] = mapped_column(default=False)
-    # created_at: Mapped[datetime] = mapped_column(server_default=func.now())
-    # updated_at: Mapped[Optional[datetime]] = mapped_column(nullable=True, onupdate=func.now())
+   

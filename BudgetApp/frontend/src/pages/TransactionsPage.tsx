@@ -5,7 +5,7 @@ import {
   SortConfig,
   TRANSACTION_CATEGORIES,
 } from '../types/transaction'
-import { fetchTransactions, importTransactions } from '../api/transactionsApi'
+import { fetchTransactions, importTransactions, createTransaction } from '../api/transactionsApi'
 import TransactionTable from '../components/TransactionTable'
 import TransactionForm from '../components/TransactionForm'
 import SortControls from '../components/SortControls'
@@ -152,16 +152,21 @@ export default function TransactionsPage() {
     setDeleteTargetId(null)
   }
 
-  function handleFormSubmit(data: TransactionFormData) {
-    if (modalMode === 'add') {
-      setTransactions((prev) => [{ id: generateId(), ...data }, ...prev])
-    } else if (modalMode === 'edit' && editingTransaction) {
-      setTransactions((prev) =>
-        prev.map((t) => (t.id === editingTransaction.id ? { ...t, ...data } : t))
-      )
+  async function handleFormSubmit(data: TransactionFormData) {
+    try {
+      if (modalMode === 'add') {
+        const created = await createTransaction(data)
+        setTransactions((prev) => [created, ...prev])
+      } else if (modalMode === 'edit' && editingTransaction) {
+        setTransactions((prev) =>
+          prev.map((t) => (t.id === editingTransaction.id ? { ...t, ...data } : t))
+        )
+      }
+      setModalMode(null)
+      setEditingTransaction(undefined)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save transaction.')
     }
-    setModalMode(null)
-    setEditingTransaction(undefined)
   }
 
   function handleFormCancel() {

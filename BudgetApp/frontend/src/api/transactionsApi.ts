@@ -72,6 +72,20 @@ export async function fetchTransactions(): Promise<Transaction[]> {
 }
 
 /**
+ * Creates a single transaction via POST /api/transactions.
+ * Returns the created transaction mapped to the frontend Transaction shape.
+ */
+export async function createTransaction(data: Omit<Transaction, 'id'>): Promise<Transaction> {
+  const raw = await api.post<BackendTransaction>('/api/transactions', {
+    date: data.date,
+    amount: data.amount,
+    category: data.category,
+    description: data.description,
+  })
+  return mapTransaction(raw)
+}
+
+/**
  * Imports transactions from a CSV file via POST /api/transactions/import.
  * Sends the file as multipart/form-data and returns the imported transactions
  * mapped to the frontend Transaction shape.

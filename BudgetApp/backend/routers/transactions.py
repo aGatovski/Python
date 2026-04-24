@@ -52,7 +52,7 @@ def list_transactions(
     {"id": 5, "user_id": 1, "date": "2026-04-15", "amount": -30.00,  "category": "Entertainment", "description": "Netflix + Gym",  "is_fixed": True,  "is_recurring": True,  "recurring_rule_id": None, "created_at": "2026-04-15T12:00:00"},
 ]
 
-
+# response_model converts the return(tx) to schema TransactionOut JSON
 @router.post("", response_model=TransactionOut, status_code=status.HTTP_201_CREATED)
 def create_transaction(
     payload: TransactionCreate,

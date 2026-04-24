@@ -13,8 +13,4 @@ class Transaction(Base):
     amount: Mapped[float] = mapped_column()  # negative = expense, positive = income
     category: Mapped[str] = mapped_column(String)
     description: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    #is_fixed: Mapped[bool] = mapped_column(default=False)
-    #is_recurring: Mapped[bool] = mapped_column(default=False)
-    #recurring_rule_id: Mapped[Optional[int]] = mapped_column(ForeignKey("recurring_rules.id", ondelete="SET NULL"), nullable=True)
-    #created_at: Mapped[datetime.datetime] = mapped_column(server_default=func.now())
-    #updated_at: Mapped[Optional[datetime.datetime]] = mapped_column(nullable=True, onupdate=func.now())
+    

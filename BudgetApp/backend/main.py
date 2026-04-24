@@ -6,11 +6,15 @@ from routers import (
     budgets,
     categories,
     goals,
-    income,
     transactions,
     users,
+    ai,
 )
-from routers import ai
+from models import user, transaction, budget, category, goal
+from database import Base, engine
+
+Base.metadata.create_all(bind=engine)
+
 app = FastAPI(
     title="BudgetApp API",
     description="Personal budgeting and financial coaching API",
@@ -19,7 +23,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5174"],
+    allow_origins=["http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -28,7 +32,6 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
 app.include_router(users.router, prefix="/api/users", tags=["Users"])
 app.include_router(transactions.router, prefix="/api/transactions", tags=["Transactions"])
-app.include_router(income.router, prefix="/api/income", tags=["Income"])
 app.include_router(categories.router, prefix="/api/categories", tags=["Categories"])
 app.include_router(budgets.router, prefix="/api/budgets", tags=["Budgets"])
 app.include_router(goals.router, prefix="/api/goals", tags=["Goals"])

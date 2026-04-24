@@ -12,5 +12,3 @@ class Budget(Base):
     category: Mapped[str] = mapped_column(String)
     limit: Mapped[float] = mapped_column()
     period: Mapped[str] = mapped_column(String, default="monthly")  # "monthly" | "yearly"
-    #created_at: Mapped[datetime] = mapped_column(server_default=func.now())
-    #updated_at: Mapped[Optional[datetime]] = mapped_column(nullable=True, onupdate=func.now())

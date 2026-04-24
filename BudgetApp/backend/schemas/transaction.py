@@ -8,8 +8,6 @@ class TransactionCreate(BaseModel):
     amount: float
     category: str
     description: Optional[str] = None
-    is_fixed: bool = False
-    is_recurring: bool = False
 
 
 class TransactionUpdate(BaseModel):
@@ -17,8 +15,6 @@ class TransactionUpdate(BaseModel):
     amount: Optional[float] = None
     category: Optional[str] = None
     description: Optional[str] = None
-    # is_fixed: Optional[bool] = None
-    # is_recurring: Optional[bool] = None
 
 
 class TransactionOut(BaseModel):
@@ -28,9 +24,5 @@ class TransactionOut(BaseModel):
     amount: float
     category: str
     description: Optional[str]
-    # is_fixed: bool
-    # is_recurring: bool
-    # recurring_rule_id: Optional[int]
-    # created_at: datetime
 
     model_config = {"from_attributes": True}

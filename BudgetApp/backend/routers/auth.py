@@ -93,11 +93,10 @@ def reset_account(
     db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     from models.transaction import Transaction
-    from models.income import Income
     from models.budget import Budget
     from models.goal import Goal
 
-    for model in (Transaction, Income, Budget, Goal):
+    for model in (Transaction, Budget, Goal):
         db.query(model).filter(model.user_id == current_user.id).delete()
     db.commit()
     return {"message": "Account data reset successfully"}

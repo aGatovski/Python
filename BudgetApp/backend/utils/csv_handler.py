@@ -3,29 +3,20 @@ import io
 from datetime import date
 from typing import List
 
+from services.ai_service import categorize_transaction
 from fastapi import HTTPException, UploadFile
 
 
-REQUIRED_CSV_FIELDS = {"amount", "description", "date"}
-USER_CATEGORIES = {
-    "Food",
-    "Bank Loan",
-    "Subscribtion",
-    "Car",
-    "Gas",
-    "Dorm",
-    "Grocieries",
-}
-
-
-def parse_transactions_csv(file: UploadFile) -> List[dict]:
+# date , amount ,cat , description 
+async def parse_transactions_csv(file: UploadFile) -> List[dict]:
     """
     Parse an uploaded CSV file into a list of transaction dicts.
     Minimum required columns: amount, description, date.
     Optional columns: category, is_fixed.
     """
-    content = file.read().decode("utf-8")
-    reader = csv.DictReader(io.StringIO(content))
+    content = await file.read()
+    content_str = content.decode("utf-8")
+    reader = csv.DictReader(io.StringIO(content_str))
 
     if reader.fieldnames is None:
         raise HTTPException(
@@ -41,25 +32,16 @@ def parse_transactions_csv(file: UploadFile) -> List[dict]:
     transactions = []
     for i, row in enumerate(reader, start=2):  # row 1 = header
         try:
-            # basically you get random csv file without header
-            # and find amount desc and first occurance of date
-            # then from description you ask a model to decide a category based on predetermined categories
+            date_str = row[date_col].strip()
             amount = float(row[amount_col].strip())
             description = row[description_col].strip()
-            date = row[date_col].strftime("%Y-%m-%d")
-    
-            category = row.get("category", "Uncategorized").strip() or "Uncategorized"
-            is_fixed_raw = row.get("is_fixed", "false").strip().lower()
-            is_fixed = is_fixed_raw in ("true", "1", "yes")
-
+            category = categorize_transaction(description)
             transactions.append(
                 {
-                    "date": parsed_date,
+                    "date": date_str,
                     "amount": amount,
                     "category": category,
                     "description": description,
-                    "is_fixed": is_fixed,
-                    "is_recurring": False,
                 }
             )
         except (ValueError, KeyError) as exc:
@@ -67,8 +49,9 @@ def parse_transactions_csv(file: UploadFile) -> List[dict]:
                 status_code=400,
                 detail=f"Invalid data on CSV row {i}: {exc}",
             )
-
-    return transactions
+    print (f"Parsed {len(transactions)} transactions from CSV")
+    print (transactions)
+    #return transactions
 
 
 def export_transactions_csv(transactions: List[dict]) -> str:

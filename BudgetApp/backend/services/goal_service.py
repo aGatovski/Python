@@ -4,7 +4,6 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, extract
 
 from models.goal import Goal
-from models.income import Income
 from models.transaction import Transaction
 
 

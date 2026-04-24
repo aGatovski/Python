@@ -4,8 +4,6 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, extract
 
 from models.transaction import Transaction
-from models.income import Income
-
 
 def get_monthly_summary(
     # db: Session, user_id: int,
