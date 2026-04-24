@@ -4,7 +4,7 @@ import {
   TransactionFormData,
   SortConfig,
 } from '../types/transaction'
-import { fetchTransactions, importTransactions, createTransaction, fetchCategories } from '../api/transactionsApi'
+import { fetchTransactions, importTransactions, createTransaction, fetchCategories, deleteTransaction } from '../api/transactionsApi'
 import TransactionTable from '../components/TransactionTable'
 import TransactionForm from '../components/TransactionForm'
 import SortControls from '../components/SortControls'
@@ -157,10 +157,19 @@ export default function TransactionsPage() {
     setDeleteTargetId(id)
   }
 
-  function handleDeleteConfirm() {
+  async function handleDeleteConfirm() {
     if (!deleteTargetId) return
-    setTransactions((prev) => prev.filter((t) => t.id !== deleteTargetId))
-    setDeleteTargetId(null)
+    try {
+      // Persist the deletion on the server before updating local state;
+      // if the request fails the transaction remains visible and an error
+      // banner is shown — preventing silent data-integrity divergence.
+      await deleteTransaction(deleteTargetId)
+      setTransactions((prev) => prev.filter((t) => t.id !== deleteTargetId))
+      setDeleteTargetId(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete transaction.')
+      setDeleteTargetId(null)
+    }
   }
 
   async function handleFormSubmit(data: TransactionFormData) {

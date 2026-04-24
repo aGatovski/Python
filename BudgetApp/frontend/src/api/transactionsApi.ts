@@ -71,6 +71,15 @@ export async function createTransaction(data: Omit<Transaction, 'id'>): Promise<
 }
 
 /**
+ * Deletes a single transaction via DELETE /api/transactions/:id.
+ * Throws an ApiError if the request fails; the caller is responsible for
+ * keeping local state in sync only after a successful response.
+ */
+export async function deleteTransaction(id: string): Promise<void> {
+  await api.delete(`/api/transactions/${id}`)
+}
+
+/**
  * Imports transactions from a CSV file via POST /api/transactions/import.
  * Sends the file as multipart/form-data and returns the imported transactions
  * mapped to the frontend Transaction shape.
