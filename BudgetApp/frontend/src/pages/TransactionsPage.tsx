@@ -3,9 +3,8 @@ import {
   Transaction,
   TransactionFormData,
   SortConfig,
-  TRANSACTION_CATEGORIES,
 } from '../types/transaction'
-import { fetchTransactions, importTransactions, createTransaction } from '../api/transactionsApi'
+import { fetchTransactions, importTransactions, createTransaction, fetchCategories } from '../api/transactionsApi'
 import TransactionTable from '../components/TransactionTable'
 import TransactionForm from '../components/TransactionForm'
 import SortControls from '../components/SortControls'
@@ -95,6 +94,7 @@ type ModalMode = 'add' | 'edit' | null
 
 export default function TransactionsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [categories, setCategories] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [sortConfig, setSortConfig] = useState<SortConfig>({ field: 'date', direction: 'desc' })
@@ -110,14 +110,25 @@ export default function TransactionsPage() {
   // Ref for the hidden CSV file input
   const csvInputRef = useRef<HTMLInputElement>(null)
 
-  // Fetch transactions from the API on mount
+  // Fetch categories and transactions from the API on mount
   useEffect(() => {
     let cancelled = false
     setLoading(true)
     setError(null)
-    fetchTransactions()
-      .then((data) => { if (!cancelled) { setTransactions(data); setLoading(false) } })
-      .catch((err) => { if (!cancelled) { setError(err instanceof Error ? err.message : 'Failed to load transactions.'); setLoading(false) } })
+    Promise.all([fetchCategories(), fetchTransactions()])
+      .then(([cats, txns]) => {
+        if (!cancelled) {
+          setCategories(cats)
+          setTransactions(txns)
+          setLoading(false)
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : 'Failed to load data.')
+          setLoading(false)
+        }
+      })
     return () => { cancelled = true }
   }, [])
 
@@ -239,8 +250,8 @@ export default function TransactionsPage() {
             onClick={() => {
               setError(null)
               setLoading(true)
-              fetchTransactions()
-                .then((data) => { setTransactions(data); setLoading(false) })
+              Promise.all([fetchCategories(), fetchTransactions()])
+                .then(([cats, txns]) => { setCategories(cats); setTransactions(txns); setLoading(false) })
                 .catch((err) => { setError(err instanceof Error ? err.message : 'Failed to load.'); setLoading(false) })
             }}
             className="text-xs font-semibold text-red-700 underline hover:text-red-800 focus:outline-none whitespace-nowrap"
@@ -420,7 +431,7 @@ export default function TransactionsPage() {
                 className="appearance-none pl-3 pr-8 py-1.5 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer transition-colors"
               >
                 <option value="">All Categories</option>
-                {TRANSACTION_CATEGORIES.map((cat) => (
+                {categories.map((cat) => (
                   <option key={cat} value={cat}>{cat}</option>
                 ))}
               </select>
@@ -506,6 +517,7 @@ export default function TransactionsPage() {
       >
         <TransactionForm
           initialData={editingTransaction}
+          categories={categories}
           onSubmit={handleFormSubmit}
           onCancel={handleFormCancel}
         />

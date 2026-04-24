@@ -3,12 +3,14 @@ import io
 from datetime import date
 from typing import List
 
+from sqlalchemy.orm import Session
+
 from services.ai_service import categorize_transaction
 from fastapi import HTTPException, UploadFile
 
 
 # date , amount ,cat , description 
-async def parse_transactions_csv(file: UploadFile) -> List[dict]:
+async def parse_transactions_csv(file: UploadFile, db: Session) -> List[dict]:
     """
     Parse an uploaded CSV file into a list of transaction dicts.
     Minimum required columns: amount, description, date.
@@ -35,23 +37,38 @@ async def parse_transactions_csv(file: UploadFile) -> List[dict]:
             date_str = row[date_col].strip()
             amount = float(row[amount_col].strip())
             description = row[description_col].strip()
-            category = categorize_transaction(description)
+            category = categorize_transaction(description, db)
+
+            # Parse optional boolean fields
+            is_fixed = False
+            is_recurring = False
+
+            if "is_fixed" in reader.fieldnames:
+                is_fixed_str = row.get("is_fixed", "").strip().lower()
+                is_fixed = is_fixed_str in ("true", "1", "yes")
+
+            if "is_recurring" in reader.fieldnames:
+                is_recurring_str = row.get("is_recurring", "").strip().lower()
+                is_recurring = is_recurring_str in ("true", "1", "yes")
+
             transactions.append(
                 {
                     "date": date_str,
                     "amount": amount,
                     "category": category,
                     "description": description,
+                    "is_fixed": is_fixed,
+                    "is_recurring": is_recurring,
                 }
             )
+            # print(f"Parsed row {i}: date={date_str}, amount={amount}, description='{description}', categorized as '{category}'")
         except (ValueError, KeyError) as exc:
             raise HTTPException(
                 status_code=400,
                 detail=f"Invalid data on CSV row {i}: {exc}",
             )
-    print (f"Parsed {len(transactions)} transactions from CSV")
-    print (transactions)
-    #return transactions
+
+    return transactions
 
 
 def export_transactions_csv(transactions: List[dict]) -> str:

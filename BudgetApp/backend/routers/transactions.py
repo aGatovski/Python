@@ -16,41 +16,32 @@ router = APIRouter()
 
 @router.get("", response_model=List[TransactionOut])
 def list_transactions(
-    # month: Optional[str] = Query(None, description="e.g. 2026-03"),
-    # category: Optional[str] = Query(None),
-    # type: Optional[str] = Query(None, description="income or expense"),
-    # search: Optional[str] = Query(None),
-    # fixed: Optional[bool] = Query(None),
-    # db: Session = Depends(get_db),
-    # current_user: User = Depends(get_current_user),
+    month: Optional[str] = Query(None, description="e.g. 2026-03"),
+    category: Optional[str] = Query(None),
+    search: Optional[str] = Query(None),
+    limit: Optional[int] = Query(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    # query = db.query(Transaction).filter(Transaction.user_id == current_user.id)
+    query = db.query(Transaction).filter(Transaction.user_id == current_user.id)
 
-    # if month:
-    #     yr, mo = int(month[:4]), int(month[5:7])
-    #     query = query.filter(
-    #         extract("year", Transaction.date) == yr,
-    #         extract("month", Transaction.date) == mo,
-    #     )
-    # if category:
-    #     query = query.filter(Transaction.category == category)
-    # if type == "income":
-    #     query = query.filter(Transaction.amount > 0)
-    # elif type == "expense":
-    #     query = query.filter(Transaction.amount < 0)
-    # if search:
-    #     query = query.filter(Transaction.description.ilike(f"%{search}%"))
-    # if fixed is not None:
-    #     query = query.filter(Transaction.is_fixed == fixed)
+    if month:
+        yr, mo = int(month[:4]), int(month[5:7])
+        query = query.filter(
+            extract("year", Transaction.date) == yr,
+            extract("month", Transaction.date) == mo,
+        )
+    if category:
+        query = query.filter(Transaction.category == category)
+    if search:
+        query = query.filter(Transaction.description.ilike(f"%{search}%"))
 
-    # return query.order_by(Transaction.date.desc()).all()
-    return [
-    {"id": 1, "user_id": 1, "date": "2026-04-01", "amount": -120.50, "category": "Groceries",     "description": "Supermarket",    "is_fixed": False, "is_recurring": False, "recurring_rule_id": None, "created_at": "2026-04-01T10:00:00"},
-    {"id": 2, "user_id": 1, "date": "2026-04-03", "amount": -45.20,  "category": "Transport",     "description": "Monthly pass",   "is_fixed": True,  "is_recurring": True,  "recurring_rule_id": None, "created_at": "2026-04-03T09:00:00"},
-    {"id": 3, "user_id": 1, "date": "2026-04-05", "amount": -85.00,  "category": "Dining",        "description": "Restaurant",     "is_fixed": False, "is_recurring": False, "recurring_rule_id": None, "created_at": "2026-04-05T20:00:00"},
-    {"id": 4, "user_id": 1, "date": "2026-04-10", "amount": -60.00,  "category": "Utilities",     "description": "Electricity",    "is_fixed": True,  "is_recurring": True,  "recurring_rule_id": None, "created_at": "2026-04-10T08:00:00"},
-    {"id": 5, "user_id": 1, "date": "2026-04-15", "amount": -30.00,  "category": "Entertainment", "description": "Netflix + Gym",  "is_fixed": True,  "is_recurring": True,  "recurring_rule_id": None, "created_at": "2026-04-15T12:00:00"},
-]
+    query = query.order_by(Transaction.date.desc())
+
+    if limit:
+        query = query.limit(limit)
+
+    return query.all()
 
 # response_model converts the return(tx) to schema TransactionOut JSON
 @router.post("", response_model=TransactionOut, status_code=status.HTTP_201_CREATED)
@@ -88,17 +79,33 @@ def export_transactions(
 
 
 @router.post("/import", response_model=List[TransactionOut], status_code=status.HTTP_201_CREATED)
-def import_transactions(
+async def import_transactions(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    rows = parse_transactions_csv(file)
+    rows = await parse_transactions_csv(file, db)
     created = []
+
     for row in rows:
+        # Check if transaction already exists (duplicate detection)
+        # Use date, amount, description, and category as duplicate key
+        existing = db.query(Transaction).filter(
+            Transaction.user_id == current_user.id,
+            Transaction.date == row["date"],
+            Transaction.amount == row["amount"],
+            Transaction.description == row["description"],
+            Transaction.category == row["category"],
+        ).first()
+
+        if existing:
+            # Skip duplicate transaction
+            continue
+
         tx = Transaction(**row, user_id=current_user.id)
         db.add(tx)
         created.append(tx)
+
     db.commit()
     for tx in created:
         db.refresh(tx)

@@ -8,39 +8,9 @@ export interface Transaction {
   date: string
   /** Positive = income, negative = expense */
   amount: number
-  category: TransactionCategory
+  category: string
   description: string
 }
-
-/** Predefined categories used across the app */
-export type TransactionCategory =
-  | 'Housing'
-  | 'Food & Dining'
-  | 'Transportation'
-  | 'Healthcare'
-  | 'Entertainment'
-  | 'Shopping'
-  | 'Utilities'
-  | 'Salary'
-  | 'Freelance'
-  | 'Investment'
-  | 'Transfer'
-  | 'Other'
-
-export const TRANSACTION_CATEGORIES: TransactionCategory[] = [
-  'Housing',
-  'Food & Dining',
-  'Transportation',
-  'Healthcare',
-  'Entertainment',
-  'Shopping',
-  'Utilities',
-  'Salary',
-  'Freelance',
-  'Investment',
-  'Transfer',
-  'Other',
-]
 
 /** Fields used when creating or editing a transaction (id is auto-generated) */
 export type TransactionFormData = Omit<Transaction, 'id'>

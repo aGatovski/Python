@@ -1,5 +1,6 @@
 import api from './client'
 import type { DashboardData, MonthlySummary, BudgetStatus, CategoryExpense } from '../types/dashboard'
+import type { Transaction } from '../types/index'
 
 // ─── Backend response shapes ──────────────────────────────────────────────────
 // These mirror the JSON returned by GET /api/analytics/overview
@@ -55,7 +56,7 @@ const CATEGORY_META: Record<string, { color: string; icon: string }> = {
   Salary:           { color: '#22c55e', icon: '💼' },
   Freelance:        { color: '#a855f7', icon: '💻' },
   Investment:       { color: '#0ea5e9', icon: '📈' },
-  Transfer:         { color: '#64748b', icon: '↔️' },
+  'Grocieries':         { color: '#64748b', icon: '↔️' },
   Other:            { color: '#94a3b8', icon: '📦' },
 }
 
@@ -129,4 +130,13 @@ export async function fetchDashboardOverview(): Promise<DashboardData> {
     budget:           mapBudgetStatus(raw.budget_status),
     categoryExpenses: mapCategoryExpenses(raw.expenses_by_category),
   }
+}
+
+/**
+ * Fetches recent transactions from GET /api/transactions?limit=5 and sorts by date descending.
+ */
+
+export async function fetchRecentTransactions(limit: number = 5): Promise<Transaction[]> {
+  const transactions = await api.get<Transaction[]>(`/api/transactions?limit=${limit}`)
+  return transactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 }

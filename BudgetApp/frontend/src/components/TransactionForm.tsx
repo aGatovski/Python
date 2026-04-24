@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react'
-import { Transaction, TransactionFormData, TRANSACTION_CATEGORIES } from '../types/transaction'
+import { Transaction, TransactionFormData } from '../types/transaction'
 
 interface TransactionFormProps {
   /** When provided the form operates in edit mode with pre-filled values */
   initialData?: Transaction
+  /** Available categories from the backend */
+  categories: string[]
   onSubmit: (data: TransactionFormData) => void
   onCancel: () => void
 }
@@ -15,22 +17,15 @@ interface FormErrors {
   description?: string
 }
 
-const EMPTY_FORM: TransactionFormData = {
-  date: new Date().toISOString().split('T')[0],
-  amount: 0,
-  category: 'Other',
-  description: '',
-}
-
 /**
  * Controlled form for creating and editing transactions.
  * Performs client-side validation before calling onSubmit.
  */
-export default function TransactionForm({ initialData, onSubmit, onCancel }: TransactionFormProps) {
+export default function TransactionForm({ initialData, categories, onSubmit, onCancel }: TransactionFormProps) {
   const [formData, setFormData] = useState<TransactionFormData>(
     initialData
       ? { date: initialData.date, amount: initialData.amount, category: initialData.category, description: initialData.description }
-      : EMPTY_FORM
+      : { date: new Date().toISOString().split('T')[0], amount: 0, category: categories[0] || 'Other', description: '' }
   )
   const [errors, setErrors] = useState<FormErrors>({})
   // Raw string for the amount input so the user can type freely (e.g. "-" prefix)
@@ -49,11 +44,16 @@ export default function TransactionForm({ initialData, onSubmit, onCancel }: Tra
       })
       setAmountRaw(String(initialData.amount))
     } else {
-      setFormData(EMPTY_FORM)
+      setFormData({
+        date: new Date().toISOString().split('T')[0],
+        amount: 0,
+        category: categories[0] || 'Other',
+        description: '',
+      })
       setAmountRaw('')
     }
     setErrors({})
-  }, [initialData])
+  }, [initialData, categories])
 
   // ── Validation ──────────────────────────────────────────────────────────────
   function validate(): boolean {
@@ -184,7 +184,7 @@ export default function TransactionForm({ initialData, onSubmit, onCancel }: Tra
             aria-describedby={errors.category ? 'txn-category-error' : undefined}
             aria-invalid={Boolean(errors.category)}
           >
-            {TRANSACTION_CATEGORIES.map((cat) => (
+            {categories.map((cat) => (
               <option key={cat} value={cat}>
                 {cat}
               </option>

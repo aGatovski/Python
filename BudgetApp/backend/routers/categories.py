@@ -20,6 +20,7 @@ def get_user_categories(db: Session, user_id: int) -> List[Category]:
         .all()
     )
 
+
 @router.get("", response_model=List[CategoryOut])
 def list_categories(
     db: Session = Depends(get_db),

@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react'
-import { MOCK_TRANSACTIONS } from '../data/mockTransactions'
 import type { NavPage } from '../types/dashboard'
 import type { DashboardData } from '../types/dashboard'
-import { fetchDashboardOverview } from '../api/dashboardApi'
+import type { Transaction } from '../types/index'
+import { fetchDashboardOverview, fetchRecentTransactions } from '../api/dashboardApi'
 import SummaryCard from '../components/SummaryCard'
 import BudgetCard from '../components/BudgetCard'
 import CategoryBreakdown from '../components/CategoryBreakdown'
@@ -22,9 +22,6 @@ function fmtDate(iso: string): string {
 // These still come from mock data — a separate GET /api/transactions?limit=5
 // call will replace this once the transactions endpoint is wired up.
 
-const RECENT_TRANSACTIONS = [...MOCK_TRANSACTIONS]
-  .sort((a, b) => b.date.localeCompare(a.date))
-  .slice(0, 5)
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -119,14 +116,15 @@ function CardSkeleton() {
  * - Monthly summary metrics (income, expenses, net balance)
  * - Budget status card
  * - Spending by category breakdown
- * - Recent transactions preview (mock until transactions endpoint is wired)
+ * - Recent transactions preview (fetched from GET /api/transactions?limit=5)
  */
 export default function DashboardPage({ onNavigate }: DashboardPageProps) {
   const [data, setData] = useState<DashboardData | null>(null)
+  const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Fetch dashboard overview on mount
+  // Fetch dashboard overview and recent transactions on mount
   useEffect(() => {
     let cancelled = false
 
@@ -134,8 +132,14 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
       setLoading(true)
       setError(null)
       try {
-        const overview = await fetchDashboardOverview()
-        if (!cancelled) setData(overview)
+        const [overview, transactions] = await Promise.all([
+          fetchDashboardOverview(),
+          fetchRecentTransactions(5),
+        ])
+        if (!cancelled) {
+          setData(overview)
+          setRecentTransactions(transactions)
+        }
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : 'Failed to load dashboard data.')
@@ -287,13 +291,13 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
         </div>
 
         <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
-          {RECENT_TRANSACTIONS.length === 0 ? (
+          {recentTransactions.length === 0 ? (
             <div className="px-5 py-10 text-center text-sm text-slate-400">
               No transactions yet this month.
             </div>
           ) : (
             <ul role="list" className="divide-y divide-slate-50">
-              {RECENT_TRANSACTIONS.map((txn) => {
+              {recentTransactions.map((txn) => {
                 const isIncome = txn.amount >= 0
                 return (
                   <li

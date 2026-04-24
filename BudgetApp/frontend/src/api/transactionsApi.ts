@@ -1,11 +1,10 @@
 import api from './client'
 import { useAuthStore } from '../store/authStore'
-import type { Transaction, TransactionCategory } from '../types/transaction'
+import type { Transaction } from '../types/transaction'
 
 const BASE_URL = 'http://localhost:8000'
 
-// ─── Backend response shape ───────────────────────────────────────────────────
-// Mirrors the TransactionOut schema returned by GET /api/transactions
+// ─── Backend response shapes ──────────────────────────────────────────────────
 
 interface BackendTransaction {
   id: number
@@ -20,47 +19,33 @@ interface BackendTransaction {
   created_at: string
 }
 
-// ─── Category normaliser ──────────────────────────────────────────────────────
-// The backend may return category names that differ slightly from the frontend
-// TransactionCategory union. Map known variants; fall back to "Other".
-
-const CATEGORY_MAP: Record<string, TransactionCategory> = {
-  // Backend names → frontend TransactionCategory
-  Groceries:     'Food & Dining',
-  Dining:        'Food & Dining',
-  'Food & Dining': 'Food & Dining',
-  Transport:     'Transportation',
-  Transportation: 'Transportation',
-  Utilities:     'Utilities',
-  Entertainment: 'Entertainment',
-  Housing:       'Housing',
-  Healthcare:    'Healthcare',
-  Health:        'Healthcare',
-  Shopping:      'Shopping',
-  Salary:        'Salary',
-  Freelance:     'Freelance',
-  Investment:    'Investment',
-  Transfer:      'Transfer',
-  Other:         'Other',
-}
-
-function normaliseCategory(raw: string): TransactionCategory {
-  return CATEGORY_MAP[raw] ?? 'Other'
+interface CategoryResponse {
+  id: number
+  name: string
+  is_default: boolean
 }
 
 // ─── Response mapper ──────────────────────────────────────────────────────────
 
 function mapTransaction(raw: BackendTransaction): Transaction {
   return {
-    id:          String(raw.id),           // backend uses numeric id
+    id:          String(raw.id),
     date:        raw.date,
     amount:      raw.amount,
-    category:    normaliseCategory(raw.category),
+    category:    raw.category,
     description: raw.description,
   }
 }
 
 // ─── Public API functions ─────────────────────────────────────────────────────
+
+/**
+ * Fetches all categories for the current user from GET /api/categories.
+ */
+export async function fetchCategories(): Promise<string[]> {
+  const raw = await api.get<CategoryResponse[]>('/api/categories')
+  return raw.map((cat) => cat.name)
+}
 
 /**
  * Fetches all transactions from GET /api/transactions and maps them to the

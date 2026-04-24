@@ -1,8 +1,11 @@
 import os
+from dotenv import load_dotenv
 from requests import Session
 from services.merchant_service import _lookup_merchant, get_categories, _save_merchant
 from google import genai
 from google.genai import types
+
+load_dotenv()
 
 _client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
 
@@ -10,11 +13,12 @@ _client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
 def categorize_transaction(description: str, db: Session) -> str:
     """Categorize a transaction description."""
     # 1. Check merchant cache first
-    merchant_category = _lookup_merchant(description)
+    merchant_category = _lookup_merchant(description.lower())
 
     if merchant_category:
         return merchant_category
     
+    print(f"Merchant '{description}' not found in cache, using AI to categorize")
     # 2. If not found, use AI model to categorize
     categories = get_categories()
     prompt = (
@@ -25,8 +29,8 @@ def categorize_transaction(description: str, db: Session) -> str:
     "Respond with the single best category from the list. If the description does not clearly fit into any of the provided categories, respond with 'Other'."
    )
 
-    response = _client.generate_content(
-        model="gemini-2.5-flash-lite", 
+    response = _client.models.generate_content(
+        model="gemini-2.0-flash", 
         contents=prompt,
         config=types.GenerateContentConfig(
             temperature=0.2,  # deterministic output
@@ -36,7 +40,7 @@ def categorize_transaction(description: str, db: Session) -> str:
 
     best_match = response.text.strip()
     _save_merchant(description, best_match, db) 
-
+    print(f"Categorized '{description}' as '{best_match}' using AI and saved to cache")
     return best_match
 
 
