@@ -43,6 +43,17 @@ function mapTransaction(raw: BackendTransaction): Transaction {
  * Fetches all categories for the current user from GET /api/categories.
  */
 export async function fetchCategories(): Promise<string[]> {
+  return [
+    "Groceries",
+    "Food & Dining",
+    "Gas",
+    "Other",
+    "Entertainment",
+    "Utilities",
+    "Rent",
+    "Income",
+    "Activity"
+  ];
   const raw = await api.get<CategoryResponse[]>('/api/categories')
   return raw.map((cat) => cat.name)
 }

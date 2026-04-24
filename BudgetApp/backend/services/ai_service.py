@@ -18,7 +18,7 @@ def categorize_transaction(description: str, db: Session) -> str:
     if merchant_category:
         return merchant_category
     
-    print(f"Merchant '{description}' not found in cache, using AI to categorize")
+    # print(f"Merchant '{description}' not found in cache, using AI to categorize")
     # 2. If not found, use AI model to categorize
     categories = get_categories()
     prompt = (
@@ -40,7 +40,7 @@ def categorize_transaction(description: str, db: Session) -> str:
 
     best_match = response.text.strip()
     _save_merchant(description, best_match, db) 
-    print(f"Categorized '{description}' as '{best_match}' using AI and saved to cache")
+    # print(f"Categorized '{description}' as '{best_match}' using AI and saved to cache")
     return best_match
 
 
