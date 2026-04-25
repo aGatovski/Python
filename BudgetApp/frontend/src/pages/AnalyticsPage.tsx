@@ -1,7 +1,7 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import type { ReactNode } from 'react'
-import type { TimeRange, AnalyticsSummary } from '../types/analytics'
-import { getMonthlyData, getCategoryData } from '../data/mockAnalytics'
+import type { TimeRange, AnalyticsSummary, MonthlyDataPoint, CategoryDataPoint } from '../types/analytics'
+import { fetchMonthlyData, fetchCategoryData } from '../api/analyticsApi'
 import TimeRangeSelector from '../components/analytics/TimeRangeSelector'
 import IncomeExpensesChart from '../components/analytics/IncomeExpensesChart'
 import SpendingTrendChart from '../components/analytics/SpendingTrendChart'
@@ -57,6 +57,21 @@ function MetricCard({ label, value, sub, variant, icon }: MetricCardProps) {
           {value}
         </p>
         {sub && <p className="mt-1 text-xs text-slate-400">{sub}</p>}
+      </div>
+    </div>
+  )
+}
+
+// ─── Skeleton loader for metric cards ────────────────────────────────────────
+
+function MetricCardSkeleton() {
+  return (
+    <div className="bg-white rounded-xl border border-slate-100 shadow-sm px-5 py-5 flex items-start gap-4 animate-pulse">
+      <div className="w-10 h-10 rounded-lg bg-slate-100 flex-shrink-0" />
+      <div className="flex-1 space-y-2 pt-1">
+        <div className="h-3 bg-slate-100 rounded w-24" />
+        <div className="h-7 bg-slate-100 rounded w-32" />
+        <div className="h-3 bg-slate-100 rounded w-20" />
       </div>
     </div>
   )
@@ -133,17 +148,51 @@ function IconAvg() {
  *  2. Income vs Expenses grouped bar chart
  *  3. Spending trend line chart + Category donut chart (side by side)
  *
- * All data is derived from mock data filtered by the selected time range.
- * No external chart library is used — all visuals are pure SVG.
+ * Data is fetched from the backend analytics API and filtered by the selected
+ * time range. All visuals are pure SVG — no external chart library.
  */
 export default function AnalyticsPage() {
   const [timeRange, setTimeRange] = useState<TimeRange>('6m')
 
-  // Derive filtered datasets whenever the time range changes
-  const monthlyData = useMemo(() => getMonthlyData(timeRange), [timeRange])
-  const categoryData = useMemo(() => getCategoryData(timeRange), [timeRange])
+  // Async data state
+  const [monthlyData, setMonthlyData] = useState<MonthlyDataPoint[]>([])
+  const [categoryData, setCategoryData] = useState<CategoryDataPoint[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  // Compute summary metrics from the filtered monthly data
+  // Re-fetch whenever the time range changes
+  useEffect(() => {
+    let cancelled = false
+
+    async function load() {
+      setLoading(true)
+      setError(null)
+      try {
+        // Fetch both datasets in parallel
+        const [monthly, category] = await Promise.all([
+          fetchMonthlyData(timeRange),
+          fetchCategoryData(timeRange),
+        ])
+        if (!cancelled) {
+          setMonthlyData(monthly)
+          setCategoryData(category)
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : 'Failed to load analytics data.')
+        }
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+
+    load()
+
+    // Cleanup: ignore stale responses if the component unmounts or range changes
+    return () => { cancelled = true }
+  }, [timeRange])
+
+  // Compute summary metrics from the fetched monthly data
   const summary = useMemo<AnalyticsSummary>(() => {
     const totalIncome   = monthlyData.reduce((s, d) => s + d.income, 0)
     const totalExpenses = monthlyData.reduce((s, d) => s + d.expenses, 0)
@@ -193,42 +242,62 @@ export default function AnalyticsPage() {
         <TimeRangeSelector value={timeRange} onChange={setTimeRange} />
       </div>
 
+      {/* ── Error banner ─────────────────────────────────────────────────── */}
+      {error && (
+        <div
+          role="alert"
+          className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl px-5 py-4 text-sm text-red-700"
+        >
+          <svg className="w-5 h-5 flex-shrink-0 mt-0.5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+          </svg>
+          <span><strong>Could not load analytics:</strong> {error}</span>
+        </div>
+      )}
+
       {/* ── Summary metrics ──────────────────────────────────────────────── */}
       <section aria-labelledby="metrics-heading">
         <h2 id="metrics-heading" className="sr-only">Summary metrics</h2>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <MetricCard
-            label="Total Income"
-            value={fmt(summary.totalIncome)}
-            sub={`Across ${monthlyData.length} months`}
-            variant="income"
-            icon={<IconIncome />}
-          />
-          <MetricCard
-            label="Total Expenses"
-            value={fmt(summary.totalExpenses)}
-            sub={
-              summary.expenseTrend >= 0
-                ? `+${summary.expenseTrend.toFixed(1)}% last month`
-                : `${summary.expenseTrend.toFixed(1)}% last month`
-            }
-            variant="expense"
-            icon={<IconExpense />}
-          />
-          <MetricCard
-            label="Net Savings"
-            value={fmt(summary.netSavings)}
-            sub={`${summary.savingsRate.toFixed(1)}% savings rate`}
-            variant="savings"
-            icon={<IconSavings />}
-          />
-          <MetricCard
-            label="Avg Monthly Spend"
-            value={fmt(summary.avgMonthlyExpenses)}
-            sub={`Top: ${summary.topCategory}`}
-            variant="neutral"
-            icon={<IconAvg />}
-          />
+          {loading ? (
+            // Show skeleton cards while data is loading
+            Array.from({ length: 4 }).map((_, i) => <MetricCardSkeleton key={i} />)
+          ) : (
+            <>
+              <MetricCard
+                label="Total Income"
+                value={fmt(summary.totalIncome)}
+                sub={`Across ${monthlyData.length} months`}
+                variant="income"
+                icon={<IconIncome />}
+              />
+              <MetricCard
+                label="Total Expenses"
+                value={fmt(summary.totalExpenses)}
+                sub={
+                  summary.expenseTrend >= 0
+                    ? `+${summary.expenseTrend.toFixed(1)}% last month`
+                    : `${summary.expenseTrend.toFixed(1)}% last month`
+                }
+                variant="expense"
+                icon={<IconExpense />}
+              />
+              <MetricCard
+                label="Net Savings"
+                value={fmt(summary.netSavings)}
+                sub={`${summary.savingsRate.toFixed(1)}% savings rate`}
+                variant="savings"
+                icon={<IconSavings />}
+              />
+              <MetricCard
+                label="Avg Monthly Spend"
+                value={fmt(summary.avgMonthlyExpenses)}
+                sub={`Top: ${summary.topCategory}`}
+                variant="neutral"
+                icon={<IconAvg />}
+              />
+            </>
+          )}
         </div>
       </section>
 
@@ -250,7 +319,11 @@ export default function AnalyticsPage() {
             </div>
           }
         >
-          <IncomeExpensesChart data={monthlyData} />
+          {loading ? (
+            <div className="h-56 bg-slate-50 rounded-lg animate-pulse" />
+          ) : (
+            <IncomeExpensesChart data={monthlyData} />
+          )}
         </SectionCard>
       </section>
 
@@ -265,7 +338,11 @@ export default function AnalyticsPage() {
             title="Spending Trend"
             description={`How your expenses have moved — ${periodLabel}`}
           >
-            <SpendingTrendChart data={monthlyData} />
+            {loading ? (
+              <div className="h-56 bg-slate-50 rounded-lg animate-pulse" />
+            ) : (
+              <SpendingTrendChart data={monthlyData} />
+            )}
           </SectionCard>
         </div>
 
@@ -275,36 +352,42 @@ export default function AnalyticsPage() {
             title="Spending by Category"
             description={`Where your money goes — ${periodLabel}`}
           >
-            <CategoryDonutChart data={categoryData} />
+            {loading ? (
+              <div className="h-56 bg-slate-50 rounded-lg animate-pulse" />
+            ) : (
+              <CategoryDonutChart data={categoryData} />
+            )}
           </SectionCard>
         </div>
       </section>
 
       {/* ── Insights callout ─────────────────────────────────────────────── */}
-      <section aria-labelledby="insights-heading">
-        <div className="bg-blue-50 border border-blue-100 rounded-xl px-5 py-4">
-          <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-              <svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
-              </svg>
-            </div>
-            <div>
-              <h2 id="insights-heading" className="text-sm font-semibold text-blue-900">
-                Key Insight
-              </h2>
-              <p className="mt-1 text-sm text-blue-700 leading-relaxed">
-                {summary.savingsRate >= 20
-                  ? `You're saving ${summary.savingsRate.toFixed(1)}% of your income — great work! Your top spending category is ${summary.topCategory}.`
-                  : summary.savingsRate >= 10
-                  ? `Your savings rate is ${summary.savingsRate.toFixed(1)}%. Consider reducing ${summary.topCategory} spend to push above 20%.`
-                  : `Your savings rate is ${summary.savingsRate.toFixed(1)}% — below the recommended 20%. ${summary.topCategory} is your largest expense category.`
-                }
-              </p>
+      {!loading && !error && (
+        <section aria-labelledby="insights-heading">
+          <div className="bg-blue-50 border border-blue-100 rounded-xl px-5 py-4">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
+                </svg>
+              </div>
+              <div>
+                <h2 id="insights-heading" className="text-sm font-semibold text-blue-900">
+                  Key Insight
+                </h2>
+                <p className="mt-1 text-sm text-blue-700 leading-relaxed">
+                  {summary.savingsRate >= 20
+                    ? `You're saving ${summary.savingsRate.toFixed(1)}% of your income — great work! Your top spending category is ${summary.topCategory}.`
+                    : summary.savingsRate >= 10
+                    ? `Your savings rate is ${summary.savingsRate.toFixed(1)}%. Consider reducing ${summary.topCategory} spend to push above 20%.`
+                    : `Your savings rate is ${summary.savingsRate.toFixed(1)}% — below the recommended 20%. ${summary.topCategory} is your largest expense category.`
+                  }
+                </p>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
     </main>
   )
