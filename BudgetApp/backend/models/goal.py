@@ -13,5 +13,4 @@ class Goal(Base):
     target_amount: Mapped[float] = mapped_column()
     current_amount: Mapped[float] = mapped_column(default=0.0)
     deadline: Mapped[Optional[date]] = mapped_column(nullable=True)
-    priority: Mapped[str] = mapped_column(String, default="medium")  # "low" | "medium" | "high"
-   
+    

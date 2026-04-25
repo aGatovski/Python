@@ -14,10 +14,10 @@ router = APIRouter()
 
 @router.get("", response_model=List[GoalOut])
 def list_goals(
-    #db: Session = Depends(get_db),
-    #current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    # return db.query(Goal).filter(Goal.user_id == current_user.id).all()
+    return db.query(Goal).filter(Goal.user_id == current_user.id).all()
     return [
     {"id": 1, "user_id": 1, "name": "Holiday Fund",       "target_amount": 3000.0, "current_amount": 1200.0, "deadline": "2026-12-01", "priority": "high",   "is_completed": False, "created_at": "2026-01-01T00:00:00"},
     {"id": 2, "user_id": 1, "name": "Emergency Fund",     "target_amount": 5000.0, "current_amount": 4800.0, "deadline": None,         "priority": "high",   "is_completed": False, "created_at": "2026-01-01T00:00:00"},
