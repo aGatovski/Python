@@ -30,10 +30,10 @@ def create_budget(
     existing = db.query(Budget).filter(
         Budget.user_id == current_user.id,
         Budget.category == payload.category,
-        Budget.period == payload.period,
+        #Budget.period == payload.period,
     ).first()
     if existing:
-        raise HTTPException(status_code=400, detail="Budget for this category and period already exists")
+        raise HTTPException(status_code=400, detail="Budget for this category already exists")
     budget = Budget(**payload.model_dump(), user_id=current_user.id)
     db.add(budget)
     db.commit()

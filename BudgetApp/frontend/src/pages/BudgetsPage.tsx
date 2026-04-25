@@ -1,10 +1,15 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import type { BudgetCategory, BudgetFormData } from '../types/budget'
 import { CATEGORY_META, DEFAULT_CATEGORY_META } from '../types/budget'
-import { MOCK_BUDGETS } from '../data/mockBudgets'
 import Modal from '../components/Modal'
 import ConfirmDialog from '../components/ConfirmDialog'
 import BudgetForm from '../components/BudgetForm'
+import {
+  fetchBudgetsWithStatus,
+  createBudget,
+  updateBudget,
+  deleteBudget,
+} from '../api/budgetsApi'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -12,8 +17,19 @@ function fmt(value: number): string {
   return new Intl.NumberFormat('en-IE', { style: 'currency', currency: 'EUR' }).format(value)
 }
 
-function generateId(): string {
-  return `bgt-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+/** Formats "YYYY-MM" → "April 2026" */
+function formatMonthLabel(isoMonth: string): string {
+  const [year, month] = isoMonth.split('-').map(Number)
+  return new Date(year, month - 1, 1).toLocaleDateString('en-IE', {
+    month: 'long',
+    year: 'numeric',
+  })
+}
+
+/** Returns the current month as "YYYY-MM" */
+function currentMonthISO(): string {
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
 }
 
 function getUsageStyle(percent: number) {
@@ -201,6 +217,34 @@ function BudgetCategoryCard({ budget, onEdit, onDelete }: BudgetCategoryCardProp
   )
 }
 
+// ─── Loading skeleton ─────────────────────────────────────────────────────────
+
+function BudgetCardSkeleton() {
+  return (
+    <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5 flex flex-col gap-4 animate-pulse">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-slate-100 flex-shrink-0" />
+          <div className="space-y-2">
+            <div className="h-3.5 w-24 bg-slate-100 rounded" />
+            <div className="h-3 w-32 bg-slate-100 rounded" />
+          </div>
+        </div>
+        <div className="h-5 w-10 bg-slate-100 rounded-full" />
+      </div>
+      <div className="h-2 w-full bg-slate-100 rounded-full" />
+      <div className="grid grid-cols-3 gap-2 pt-1 border-t border-slate-50">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="flex flex-col items-center gap-1">
+            <div className="h-3 w-10 bg-slate-100 rounded" />
+            <div className="h-4 w-16 bg-slate-100 rounded" />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ─── Empty State ──────────────────────────────────────────────────────────────
 
 function BudgetEmptyState({ onAdd }: { onAdd: () => void }) {
@@ -240,16 +284,48 @@ type ModalMode = 'add' | 'edit' | null
 
 /**
  * Budget management page.
- * Lets users set monthly spending limits per category, track real-time
- * progress against those limits, and add / edit / delete budget categories.
+ * Loads budgets and their current-month spending from the backend, then lets
+ * users set monthly spending limits per category, track real-time progress
+ * against those limits, and add / edit / delete budget categories.
  */
 export default function BudgetsPage() {
-  const [budgets, setBudgets] = useState<BudgetCategory[]>(MOCK_BUDGETS)
+  // ── Data state ───────────────────────────────────────────────────────────────
+  const [budgets, setBudgets] = useState<BudgetCategory[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  // Track which month's spending to display; defaults to the current month
+  const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthISO)
+
+  // ── UI state ─────────────────────────────────────────────────────────────────
   const [modalMode, setModalMode] = useState<ModalMode>(null)
   const [editingBudget, setEditingBudget] = useState<BudgetCategory | undefined>(undefined)
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
 
-  // ── Derived totals ──────────────────────────────────────────────────────────
+  // ── Data loading ─────────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function load() {
+      setIsLoading(true)
+      setError(null)
+      try {
+        const data = await fetchBudgetsWithStatus(selectedMonth)
+        if (!cancelled) setBudgets(data)
+      } catch (err) {
+        if (!cancelled)
+          setError(err instanceof Error ? err.message : 'Failed to load budgets.')
+      } finally {
+        if (!cancelled) setIsLoading(false)
+      }
+    }
+
+    load()
+    return () => { cancelled = true }
+  }, [selectedMonth])
+
+  // ── Derived totals ───────────────────────────────────────────────────────────
 
   const totals = useMemo(() => {
     const totalBudget = budgets.reduce((sum, b) => sum + b.monthlyLimit, 0)
@@ -263,7 +339,7 @@ export default function BudgetsPage() {
   // Categories already assigned — prevents duplicates in the add form
   const usedCategories = useMemo(() => budgets.map((b) => b.category), [budgets])
 
-  // ── Handlers ────────────────────────────────────────────────────────────────
+  // ── Handlers ─────────────────────────────────────────────────────────────────
 
   function handleAddNew() {
     setEditingBudget(undefined)
@@ -279,30 +355,34 @@ export default function BudgetsPage() {
     setDeleteTargetId(id)
   }
 
-  function handleDeleteConfirm() {
+  async function handleDeleteConfirm() {
     if (!deleteTargetId) return
-    setBudgets((prev) => prev.filter((b) => b.id !== deleteTargetId))
     setDeleteTargetId(null)
+    try {
+      await deleteBudget(deleteTargetId)
+      // Optimistic removal — avoids a full re-fetch for a simple delete
+      setBudgets((prev) => prev.filter((b) => b.id !== deleteTargetId))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete budget.')
+    }
   }
 
-  function handleFormSubmit(data: BudgetFormData) {
-    if (modalMode === 'add') {
-      const newBudget: BudgetCategory = {
-        id: generateId(),
-        category: data.category,
-        monthlyLimit: data.monthlyLimit,
-        amountSpent: 0,
-      }
-      setBudgets((prev) => [...prev, newBudget])
-    } else if (modalMode === 'edit' && editingBudget) {
-      setBudgets((prev) =>
-        prev.map((b) =>
-          b.id === editingBudget.id ? { ...b, monthlyLimit: data.monthlyLimit } : b
-        )
-      )
-    }
+  async function handleFormSubmit(data: BudgetFormData) {
     setModalMode(null)
     setEditingBudget(undefined)
+    setError(null)
+    try {
+      if (modalMode === 'add') {
+        await createBudget({ category: data.category, limit: data.monthlyLimit })
+      } else if (modalMode === 'edit' && editingBudget) {
+        await updateBudget(editingBudget.id, { limit: data.monthlyLimit })
+      }
+      // Re-fetch to get the server-assigned id and the latest spent amounts
+      const updated = await fetchBudgetsWithStatus(selectedMonth)
+      setBudgets(updated)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save budget.')
+    }
   }
 
   function handleFormCancel() {
@@ -312,7 +392,7 @@ export default function BudgetsPage() {
 
   const deleteTarget = budgets.find((b) => b.id === deleteTargetId)
 
-  // ── Render ───────────────────────────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────────────────────────
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-8">
@@ -323,7 +403,7 @@ export default function BudgetsPage() {
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Budget</h1>
           <p className="mt-0.5 text-sm text-slate-500">
             Monthly spending limits &middot;{' '}
-            <span className="font-medium text-slate-700">April 2026</span>
+            <span className="font-medium text-slate-700">{formatMonthLabel(selectedMonth)}</span>
           </p>
         </div>
 
@@ -337,6 +417,34 @@ export default function BudgetsPage() {
           Add Budget
         </button>
       </div>
+
+      {/* ── Error banner ──────────────────────────────────────────────────── */}
+      {error && (
+        <div
+          role="alert"
+          className="flex items-start gap-3 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700"
+        >
+          <svg
+            className="w-4 h-4 mt-0.5 flex-shrink-0 text-red-500"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+          </svg>
+          <span className="flex-1">{error}</span>
+          <button
+            onClick={() => setError(null)}
+            className="text-red-400 hover:text-red-600 transition-colors focus:outline-none"
+            aria-label="Dismiss error"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
 
       {/* ── Overview cards ────────────────────────────────────────────────── */}
       <section aria-labelledby="overview-heading">
@@ -437,12 +545,8 @@ export default function BudgetsPage() {
             />
           </div>
           <div className="flex justify-between mt-2">
-            <p className="text-xs text-slate-400">
-              {fmt(totals.totalSpent)} spent
-            </p>
-            <p className="text-xs text-slate-400">
-              {fmt(totals.totalBudget)} total
-            </p>
+            <p className="text-xs text-slate-400">{fmt(totals.totalSpent)} spent</p>
+            <p className="text-xs text-slate-400">{fmt(totals.totalBudget)} total</p>
           </div>
         </div>
       )}
@@ -462,7 +566,6 @@ export default function BudgetsPage() {
             )}
           </h2>
 
-          {/* Alert badge if any categories are over budget */}
           {totals.overBudgetCount > 0 && (
             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-50 text-red-600 border border-red-100">
               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -473,10 +576,16 @@ export default function BudgetsPage() {
           )}
         </div>
 
-        {budgets.length === 0 ? (
+        {isLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+            <BudgetCardSkeleton />
+            <BudgetCardSkeleton />
+            <BudgetCardSkeleton />
+          </div>
+        ) : budgets.length === 0 ? (
           <BudgetEmptyState onAdd={handleAddNew} />
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
             {budgets.map((budget) => (
               <BudgetCategoryCard
                 key={budget.id}

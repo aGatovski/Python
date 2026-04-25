@@ -11,4 +11,4 @@ class Budget(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     category: Mapped[str] = mapped_column(String)
     limit: Mapped[float] = mapped_column()
-    period: Mapped[str] = mapped_column(String, default="monthly")  # "monthly" | "yearly"
+    # period: Mapped[str] = mapped_column(String, default="monthly")  # "monthly" | "yearly"
