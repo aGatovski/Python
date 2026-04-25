@@ -9,8 +9,8 @@ interface BudgetOut {
   user_id: number
   category: string
   limit: number          // backend uses "limit"; frontend uses "monthlyLimit"
-  period?: string
-  created_at?: string
+  // period?: string
+  // created_at?: string
 }
 
 /**
@@ -20,7 +20,7 @@ interface BudgetOut {
 interface BudgetStatusItem {
   category: string
   limit: number
-  spent: number
+  spent?: number
   remaining?: number
   percent_used?: number
   status?: string

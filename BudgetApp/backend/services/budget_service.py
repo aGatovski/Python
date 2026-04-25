@@ -44,8 +44,8 @@ def calculate_budget_status(
                 "category": budget.category,
                 "limit": budget.limit,
                 "spent": spent,
-                #"remaining": remaining,
-                #"percent_used": percent_used,
+                "remaining": remaining,
+                "percent_used": percent_used,
                 #"status": status,
             }
         )
