@@ -23,11 +23,11 @@ def compute_goal_forecast(db: Session, user_id: int, goal: Goal) -> dict:
             yr -= 1
 
         income = (
-            db.query(func.coalesce(func.sum(Income.amount), 0.0))
+            db.query(func.coalesce(func.sum(Transaction.amount), 0.0))
             .filter(
-                Income.user_id == user_id,
-                extract("year", Income.date) == yr,
-                extract("month", Income.date) == mo,
+                Transaction.user_id == user_id,
+                extract("year", Transaction.date) == yr,
+                extract("month", Transaction.date) == mo,
             )
             .scalar()
         )

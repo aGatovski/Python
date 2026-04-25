@@ -30,7 +30,7 @@ def categorize_transaction(description: str, db: Session) -> str:
    )
 
     response = _client.models.generate_content(
-        model="gemini-2.0-flash", 
+        model="gemini-2.5-flash-lite", 
         contents=prompt,
         config=types.GenerateContentConfig(
             temperature=0.2,  # deterministic output
@@ -40,7 +40,7 @@ def categorize_transaction(description: str, db: Session) -> str:
 
     best_match = response.text.strip()
     _save_merchant(description, best_match, db) 
-    # print(f"Categorized '{description}' as '{best_match}' using AI and saved to cache")
+    #print(f"Categorized '{description}' as '{best_match}' using AI and saved to cache")
     return best_match
 
 

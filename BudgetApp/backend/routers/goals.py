@@ -11,20 +11,16 @@ from services.goal_service import compute_goal_forecast
 
 router = APIRouter()
 
-
+#OK
 @router.get("", response_model=List[GoalOut])
 def list_goals(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     return db.query(Goal).filter(Goal.user_id == current_user.id).all()
-    return [
-    {"id": 1, "user_id": 1, "name": "Holiday Fund",       "target_amount": 3000.0, "current_amount": 1200.0, "deadline": "2026-12-01", "priority": "high",   "is_completed": False, "created_at": "2026-01-01T00:00:00"},
-    {"id": 2, "user_id": 1, "name": "Emergency Fund",     "target_amount": 5000.0, "current_amount": 4800.0, "deadline": None,         "priority": "high",   "is_completed": False, "created_at": "2026-01-01T00:00:00"},
-    {"id": 3, "user_id": 1, "name": "New Laptop",         "target_amount": 1500.0, "current_amount": 1500.0, "deadline": "2026-04-01", "priority": "medium", "is_completed": True,  "created_at": "2026-01-01T00:00:00"},
-    {"id": 4, "user_id": 1, "name": "Car Down Payment",   "target_amount": 8000.0, "current_amount": 950.0,  "deadline": "2027-06-01", "priority": "low",    "is_completed": False, "created_at": "2026-01-01T00:00:00"},
-    ]
 
+
+#OK
 @router.post("", response_model=GoalOut, status_code=status.HTTP_201_CREATED)
 def create_goal(
     payload: GoalCreate,
@@ -38,6 +34,7 @@ def create_goal(
     return goal
 
 
+#Potentially remove
 @router.get("/{goal_id}", response_model=GoalOut)
 def get_goal(
     goal_id: int,
@@ -50,6 +47,7 @@ def get_goal(
     return goal
 
 
+#OK
 @router.put("/{goal_id}", response_model=GoalOut)
 def update_goal(
     goal_id: int,
@@ -67,6 +65,7 @@ def update_goal(
     return goal
 
 
+#OK
 @router.delete("/{goal_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_goal(
     goal_id: int,
@@ -80,6 +79,7 @@ def delete_goal(
     db.commit()
 
 
+#Potentially remove
 @router.get("/{goal_id}/forecast", response_model=GoalForecast)
 def get_goal_forecast(
     goal_id: int,
