@@ -9,7 +9,7 @@ from services.ai_service import categorize_transaction
 from fastapi import HTTPException, UploadFile
 
 
-# date , amount ,cat , description 
+# date , amount ,cat , description OK
 async def parse_transactions_csv(file: UploadFile, db: Session) -> List[dict]:
     """
     Parse an uploaded CSV file into a list of transaction dicts.
@@ -56,7 +56,7 @@ async def parse_transactions_csv(file: UploadFile, db: Session) -> List[dict]:
 
     return transactions
 
-
+# Not touched
 def export_transactions_csv(transactions: List[dict]) -> str:
     """Serialize a list of transaction dicts to a CSV string."""
     output = io.StringIO()
