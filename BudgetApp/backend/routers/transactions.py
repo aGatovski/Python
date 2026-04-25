@@ -70,8 +70,6 @@ def export_transactions(
             "amount": t.amount,
             "category": t.category,
             "description": t.description,
-            "is_fixed": t.is_fixed,
-            "is_recurring": t.is_recurring,
         }
         for t in txs
     ]

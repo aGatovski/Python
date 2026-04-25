@@ -13,6 +13,4 @@ class Transaction(Base):
     amount: Mapped[float] = mapped_column()  # negative = expense, positive = income
     category: Mapped[str] = mapped_column(String)
     description: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    is_fixed: Mapped[bool] = mapped_column(Boolean, default=False)
-    is_recurring: Mapped[bool] = mapped_column(Boolean, default=False)
 

@@ -13,10 +13,6 @@ interface BackendTransaction {
   amount: number
   category: string
   description: string
-  is_fixed: boolean
-  is_recurring: boolean
-  recurring_rule_id: number | null
-  created_at: string
 }
 
 interface CategoryResponse {

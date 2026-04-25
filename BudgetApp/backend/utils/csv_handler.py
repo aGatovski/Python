@@ -39,26 +39,12 @@ async def parse_transactions_csv(file: UploadFile, db: Session) -> List[dict]:
             description = row[description_col].strip()
             category = categorize_transaction(description, db)
 
-            # Parse optional boolean fields
-            is_fixed = False
-            is_recurring = False
-
-            if "is_fixed" in reader.fieldnames:
-                is_fixed_str = row.get("is_fixed", "").strip().lower()
-                is_fixed = is_fixed_str in ("true", "1", "yes")
-
-            if "is_recurring" in reader.fieldnames:
-                is_recurring_str = row.get("is_recurring", "").strip().lower()
-                is_recurring = is_recurring_str in ("true", "1", "yes")
-
             transactions.append(
                 {
                     "date": date_str,
                     "amount": amount,
                     "category": category,
                     "description": description,
-                    "is_fixed": is_fixed,
-                    "is_recurring": is_recurring,
                 }
             )
             # print(f"Parsed row {i}: date={date_str}, amount={amount}, description='{description}', categorized as '{category}'")
@@ -80,8 +66,6 @@ def export_transactions_csv(transactions: List[dict]) -> str:
         "amount",
         "category",
         "description",
-        "is_fixed",
-        "is_recurring",
     ]
     writer = csv.DictWriter(output, fieldnames=fieldnames, extrasaction="ignore")
     writer.writeheader()
