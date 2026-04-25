@@ -10,7 +10,7 @@ from services import analytics_service
 
 router = APIRouter()
 
-
+#OK
 @router.get("/summary/{month}")
 def monthly_summary(
     month: str,
@@ -22,12 +22,12 @@ def monthly_summary(
 
 @router.get("/by-category")
 def by_category(
-    # month: Optional[str] = Query(None, description="e.g. 2026-03"),
-    # year: Optional[int] = Query(None),
-    # db: Session = Depends(get_db),
-    # current_user: User = Depends(get_current_user),
+    month: Optional[str] = Query(None, description="e.g. 2026-03"),
+    year: Optional[int] = Query(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    # return analytics_service.get_expenses_by_category(db, current_user.id, month=month, year=year)
+    return analytics_service.get_expenses_by_category(db, current_user.id, month=month, year=year)
     return [
         {"category": "Groceries", "total": 120.50},
         {"category": "Dining", "total": 85.00},
@@ -71,66 +71,27 @@ def spending_trends(
         for r in rows
     ]
 
-
+#OK
 @router.get("/overview")
 def dashboard_overview(
-    # db: Session = Depends(get_db),
-    # current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Full dashboard: current month summary + budget status + category breakdown."""
-    # today = date.today()
-    # month = f"{today.year}-{today.month:02d}"
-
-    # summary = analytics_service.get_monthly_summary(db, current_user.id, month)
-    # by_cat = analytics_service.get_expenses_by_category(db, current_user.id, month=month)
-
-    # from services.budget_service import calculate_budget_status
-    # budget_status = calculate_budget_status(db, current_user.id, month)
-
-    # # return {
-    # #     "month": month,
-    # #     "summary": summary,
-    # #     "expenses_by_category": by_cat,
-    # #     "budget_status": budget_status,
-    # # }
-
     today = date.today()
     month = f"{today.year}-{today.month:02d}"
+    month = "2026-01"
 
-    monthly_summary = analytics_service.get_monthly_summary(month=month)
-    # expenses_by_category = analytics_service.get_expenses_by_category()
+    monthly_summary = analytics_service.get_monthly_summary(month=month, db=db, user_id=current_user.id)
+    expenses_by_category = analytics_service.get_expenses_by_category(db=db, user_id=current_user.id, month=month)
 
+    from services.budget_service import calculate_budget_status
+    budget_status = calculate_budget_status(db, current_user.id, month)
+    
     return {
-        "month": "2026-04",
-        "summary": {
-            "month": "2026-04",
-            "total_income": 1700.00,
-            "total_expenses": 500.00,
-            "net": 1200.00,
-            #"savings_rate": 70.59,
-            #"transaction_count": 4,
-        },
-        "expenses_by_category": [
-            {"category": "Groceries", "total": 120.50},
-            {"category": "Dining", "total": 85.00},
-            {"category": "Transport", "total": 45.20},
-        ],
-        "budget_status": [
-            {
-                #"category": "Groceries",
-                "limit": 200.0,
-                "spent": 120.50,
-                #"remaining": 79.50,
-                #"percent_used": 60.25,
-                #"status": "on_track",
-            },
-            {
-                #"category": "Transport",
-                "limit": 80.0,
-                "spent": 90.00,
-                #"remaining": -10.00,
-                #"percent_used": 112.5,
-                #"status": "exceeded",
-            },
-        ],
+        "month": month,
+
+        "summary": monthly_summary,
+        "expenses_by_category": expenses_by_category,
+        "budget_status": budget_status,
     }
