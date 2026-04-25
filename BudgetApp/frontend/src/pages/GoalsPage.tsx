@@ -1,20 +1,21 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import type { SavingsGoal, SavingsGoalWithProgress, GoalFormData, GoalStatus } from '../types/savings'
-import { MOCK_SAVINGS_GOALS } from '../data/mockSavings'
 import Modal from '../components/Modal'
 import ConfirmDialog from '../components/ConfirmDialog'
 import GoalCard from '../components/savings/GoalCard'
 import GoalForm from '../components/savings/GoalForm'
 import ProgressBar from '../components/savings/ProgressBar'
+import {
+  fetchGoals,
+  createGoal,
+  updateGoal,
+  deleteGoal,
+} from '../api/goalsApi'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function fmt(value: number): string {
   return new Intl.NumberFormat('en-IE', { style: 'currency', currency: 'EUR' }).format(value)
-}
-
-function generateId(): string {
-  return `goal-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
 }
 
 /**
@@ -86,6 +87,34 @@ function StatCard({ label, value, subtext, iconBg, iconColor, icon, valueColor =
   )
 }
 
+// ─── Loading skeleton ─────────────────────────────────────────────────────────
+
+function GoalCardSkeleton() {
+  return (
+    <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5 flex flex-col gap-4 animate-pulse">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-slate-100 flex-shrink-0" />
+          <div className="space-y-2">
+            <div className="h-3.5 w-28 bg-slate-100 rounded" />
+            <div className="h-3 w-20 bg-slate-100 rounded" />
+          </div>
+        </div>
+        <div className="h-5 w-16 bg-slate-100 rounded-full" />
+      </div>
+      <div className="h-2 w-full bg-slate-100 rounded-full" />
+      <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-50">
+        {[0, 1].map((i) => (
+          <div key={i} className="flex flex-col gap-1">
+            <div className="h-3 w-12 bg-slate-100 rounded" />
+            <div className="h-4 w-20 bg-slate-100 rounded" />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ─── Empty State ──────────────────────────────────────────────────────────────
 
 function GoalsEmptyState({ onAdd }: { onAdd: () => void }) {
@@ -119,14 +148,48 @@ type ModalMode = 'add' | 'edit' | null
 
 /**
  * Savings Goals page.
- * Lets users define savings goals, track progress, and manage them
- * through add / edit / delete flows. All state is local (mock data only).
+ * Loads goals from the backend, then lets users create, edit, and delete them.
+ *
+ * Icon and color are frontend-only UI preferences — they are collected by the
+ * form and kept in local state, but are not persisted to the backend (the API
+ * does not have columns for them). Goals loaded from the server receive default
+ * values; users can update them locally via the edit form.
  */
 export default function GoalsPage() {
-  const [goals, setGoals] = useState<SavingsGoal[]>(MOCK_SAVINGS_GOALS)
+  // ── Data state ───────────────────────────────────────────────────────────────
+  const [goals, setGoals] = useState<SavingsGoal[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  // ── UI state ─────────────────────────────────────────────────────────────────
   const [modalMode, setModalMode] = useState<ModalMode>(null)
   const [editingGoal, setEditingGoal] = useState<SavingsGoal | undefined>(undefined)
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
+
+  // ── Data loading ─────────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function load() {
+      setIsLoading(true)
+      setError(null)
+      try {
+        const data = await fetchGoals()
+        if (!cancelled) setGoals(data)
+      } catch (err) {
+        if (!cancelled)
+          setError(err instanceof Error ? err.message : 'Failed to load goals.')
+      } finally {
+        if (!cancelled) setIsLoading(false)
+      }
+    }
+
+    load()
+    return () => { cancelled = true }
+  }, [])
+
+  // ── Derived data ─────────────────────────────────────────────────────────────
 
   // Enrich all goals with computed progress fields
   const enrichedGoals = useMemo<SavingsGoalWithProgress[]>(() => goals.map(enrichGoal), [goals])
@@ -141,7 +204,7 @@ export default function GoalsPage() {
     return { totalSaved, totalTarget, completedCount, atRiskCount, overallPercent }
   }, [goals, enrichedGoals])
 
-  // ── Handlers ────────────────────────────────────────────────────────────────
+  // ── Handlers ─────────────────────────────────────────────────────────────────
 
   function handleAddNew() {
     setEditingGoal(undefined)
@@ -159,25 +222,70 @@ export default function GoalsPage() {
     setDeleteTargetId(id)
   }
 
-  function handleDeleteConfirm() {
+  async function handleDeleteConfirm() {
     if (!deleteTargetId) return
-    setGoals((prev) => prev.filter((g) => g.id !== deleteTargetId))
+    const idToDelete = deleteTargetId
     setDeleteTargetId(null)
+    try {
+      await deleteGoal(idToDelete)
+      // Optimistic removal — avoids a full re-fetch for a simple delete
+      setGoals((prev) => prev.filter((g) => g.id !== idToDelete))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete goal.')
+    }
   }
 
-  function handleFormSubmit(data: GoalFormData) {
-    if (modalMode === 'add') {
-      const newGoal: SavingsGoal = {
-        id: generateId(),
-        createdAt: new Date().toISOString().split('T')[0],
-        ...data,
-      }
-      setGoals((prev) => [...prev, newGoal])
-    } else if (modalMode === 'edit' && editingGoal) {
-      setGoals((prev) => prev.map((g) => (g.id === editingGoal.id ? { ...g, ...data } : g)))
-    }
+  async function handleFormSubmit(data: GoalFormData) {
+    // Capture modal mode before closing it
+    const mode = modalMode
+    const editing = editingGoal
+
     setModalMode(null)
     setEditingGoal(undefined)
+    setError(null)
+
+    try {
+      if (mode === 'add') {
+        // Send only the backend-relevant fields; pass icon/color as uiMeta so
+        // they are merged into the returned SavingsGoal (not sent to the API)
+        const newGoal = await createGoal(
+          {
+            name:         data.name,
+            target_amount: data.targetAmount,
+            deadline:     data.targetDate || undefined,
+          },
+          { icon: data.icon, color: data.color },
+        )
+        setGoals((prev) => [...prev, newGoal])
+
+      } else if (mode === 'edit' && editing) {
+        // Send only the fields the backend understands
+        await updateGoal(editing.id, {
+          name:           data.name,
+          target_amount:  data.targetAmount,
+          current_amount: data.currentAmount,
+          deadline:       data.targetDate || null,
+        })
+        // Merge the full form data (including icon/color) into local state
+        setGoals((prev) =>
+          prev.map((g) =>
+            g.id === editing.id
+              ? {
+                  ...g,
+                  name:          data.name,
+                  targetAmount:  data.targetAmount,
+                  currentAmount: data.currentAmount,
+                  targetDate:    data.targetDate || undefined,
+                  icon:          data.icon,
+                  color:         data.color,
+                }
+              : g,
+          ),
+        )
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save goal.')
+    }
   }
 
   function handleFormCancel() {
@@ -210,6 +318,34 @@ export default function GoalsPage() {
           Add Goal
         </button>
       </div>
+
+      {/* ── Error banner ──────────────────────────────────────────────────── */}
+      {error && (
+        <div
+          role="alert"
+          className="flex items-start gap-3 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700"
+        >
+          <svg
+            className="w-4 h-4 mt-0.5 flex-shrink-0 text-red-500"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+          </svg>
+          <span className="flex-1">{error}</span>
+          <button
+            onClick={() => setError(null)}
+            className="text-red-400 hover:text-red-600 transition-colors focus:outline-none"
+            aria-label="Dismiss error"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
 
       {/* ── Overview stat cards ───────────────────────────────────────────── */}
       <section aria-labelledby="overview-heading">
@@ -324,7 +460,13 @@ export default function GoalsPage() {
           )}
         </div>
 
-        {goals.length === 0 ? (
+        {isLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+            <GoalCardSkeleton />
+            <GoalCardSkeleton />
+            <GoalCardSkeleton />
+          </div>
+        ) : goals.length === 0 ? (
           <GoalsEmptyState onAdd={handleAddNew} />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">

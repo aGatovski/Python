@@ -15,8 +15,8 @@ class GoalUpdate(BaseModel):
     target_amount: Optional[float] = None
     current_amount: Optional[float] = None
     deadline: Optional[date] = None
-    priority: Optional[str] = None
-    is_completed: Optional[bool] = None
+    # priority: Optional[str] = None
+    # is_completed: Optional[bool] = None
 
 
 class GoalOut(BaseModel):
@@ -26,9 +26,9 @@ class GoalOut(BaseModel):
     target_amount: float
     current_amount: float
     deadline: Optional[date]
-    priority: str
-    is_completed: bool
-    created_at: datetime
+    # priority: str
+    # is_completed: bool
+    # created_at: datetime
 
     model_config = {"from_attributes": True}
 
