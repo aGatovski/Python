@@ -5,6 +5,7 @@ from sqlalchemy import func, extract
 
 from models.transaction import Transaction
 
+#OK
 def get_monthly_summary(
     db: Session, user_id: int,
     month: str,
@@ -54,16 +55,13 @@ def get_monthly_summary(
     }
 
 
+#OK
 def get_expenses_by_category(
     db: Session, user_id: int, month: Optional[str], year: Optional[int] = None
 ) -> list:
     """Return expenses grouped by category as deterministic SQL aggregates."""
     query = (
         db.query(Transaction.category, func.sum(Transaction.amount).label("total"))
-        # .filter(
-        #     #extract("year", Transaction.date) == year,
-        #     extract("month", Transaction.date) == month,
-        # )
         .filter(Transaction.user_id == user_id, Transaction.amount < 0)
     )
 
