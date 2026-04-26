@@ -4,8 +4,8 @@ from datetime import date
 from typing import List
 
 from sqlalchemy.orm import Session
-
-from services.ai_service import categorize_transaction
+from services.transactions_service import categorize_transaction
+#from services.ai_service import categorize_transaction
 from fastapi import HTTPException, UploadFile
 
 
