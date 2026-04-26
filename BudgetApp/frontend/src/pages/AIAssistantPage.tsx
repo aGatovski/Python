@@ -20,7 +20,8 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import type { ChatMessage } from '../types/chat'
-import { getAIResponse, SUGGESTED_PROMPTS } from '../services/mockAI'
+import { SUGGESTED_PROMPTS } from '../services/mockAI'
+import { initChatSession, sendChatMessage } from '../api/aiApi'
 import ChatMessageBubble, { TypingIndicator } from '../components/ai/ChatMessage'
 import ChatInput from '../components/ai/ChatInput'
 import SuggestedPrompts from '../components/ai/SuggestedPrompts'
@@ -54,9 +55,24 @@ export default function AIAssistantPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE])
   const [inputValue, setInputValue] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  // Session context loaded once from /ai/chat/init — sent with every message
+  const [sessionContext, setSessionContext] = useState<string>('')
 
   // Whether the user has sent at least one message (hides suggested prompts)
   const hasUserMessages = messages.some((m) => m.role === 'user')
+
+  // ── Load session context once on mount ────────────────────────────────────
+  // Fetches all user financial data from the backend once per chat session.
+  // The context string is stored in state and sent with every message.
+
+  useEffect(() => {
+    initChatSession()
+      .then((ctx) => setSessionContext(ctx))
+      .catch(() => {
+        // If init fails, chat still works — AI will have no financial context
+        console.warn('AI chat: failed to load financial context')
+      })
+  }, []) // empty deps — runs once on mount
 
   // ── Scroll management ──────────────────────────────────────────────────────
   // Scroll to the bottom of the message list whenever messages change.
@@ -87,8 +103,8 @@ export default function AIAssistantPage() {
       setIsLoading(true)
 
       try {
-        // 2. Fetch the (mocked) AI response
-        const responseText = await getAIResponse(trimmed, messages)
+        // 2. Send to real AI backend with full conversation history
+        const responseText = await sendChatMessage(trimmed, messages, sessionContext)
 
         // 3. Append the assistant's response
         const assistantMessage: ChatMessage = {
@@ -112,7 +128,7 @@ export default function AIAssistantPage() {
         setIsLoading(false)
       }
     },
-    [isLoading, messages],
+    [isLoading, messages, sessionContext],
   )
 
   // ── Handle suggested prompt click ──────────────────────────────────────────

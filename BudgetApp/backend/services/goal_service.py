@@ -77,8 +77,8 @@ def compute_goal_forecast(db: Session, user_id: int, goal: Goal) -> dict:
         "shortfall": shortfall,
     }
 
-def goal_summary(db: Session, user_id: int) -> dict:
-    goals = db.query(Goal).filter(Goal.id == user_id).all()
+def goal_summary(db: Session, user_id: int) -> list:
+    goals = db.query(Goal).filter(Goal.user_id == user_id).all()
 
     results = []
     for goal in goals:

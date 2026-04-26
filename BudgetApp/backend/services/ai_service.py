@@ -14,6 +14,7 @@ from dateutil.relativedelta import relativedelta
 load_dotenv()
 
 _client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
+_CHAT_MODEL = "gemini-2.0-flash"
 
 def categorize_transaction(description: str, db: Session) -> str:
     """Categorize a transaction description."""
@@ -34,7 +35,7 @@ def categorize_transaction(description: str, db: Session) -> str:
    )
 
     response = _client.models.generate_content(
-        model="gemini-2.0-flash", 
+        model=_CHAT_MODEL, 
         contents=prompt,
         config=types.GenerateContentConfig(
             temperature=0.2,  # deterministic output
@@ -53,7 +54,7 @@ def _build_financial_context(user_id: int, db: Session) -> str:
     The AI model receives only this context — it never computes financial values itself.
     """
     today = date.today()
-    current_month = f"{today.year}-{today.month}"
+    current_month = f"{today.year}-{today.month:02d}"
 
     monthly_summary = get_monthly_summary(db=db, user_id=user_id, month=current_month)
     speding_by_category = get_expenses_by_category(db=db, user_id=user_id, month=current_month)
@@ -92,14 +93,61 @@ def _build_financial_context(user_id: int, db: Session) -> str:
     lines.append("--- SPENDING TREND (last 3 months) ---")
     for offset in range(3, 0, -1):
         target_month = today - relativedelta(months=offset)
-        target_month_str =  f"{target_month.year}-{target_month.month}"
+        target_month_str =  f"{target_month.year}-{target_month.month:02d}"
         target_month_summary = get_monthly_summary(db, user_id, target_month_str)
 
         lines.append(f"Month: {target_month}: {target_month_summary['total_expenses']} expenses")
 
-    print(lines)
-    # return "\n".join(lines)
+    #print(lines)
+    return "\n".join(lines)
 
+def chat_with_history(message: str, history: list[dict], session_context: str) -> str:
+    """
+    Send a message to Gemini with full conversation history.
+    
+    Args:
+        message: The latest user message
+        history: List of previous messages [{"role": "user"|"model", "content": "..."}]
+        session_context: The financial context string built at session start (loaded once)
+    
+    Returns:
+        The AI's response text
+    """
+    system_instruction = (
+        "You are a personal financial assistant with access to the user's complete financial data. "
+        "Use ONLY the data provided in your context to answer questions. "
+        "Do NOT compute, estimate, or invent any financial figures — all numbers are pre-calculated. "
+        "If the data does not contain enough information to answer, say so clearly. "
+        "Be concise, specific, and actionable. When suggesting improvements, reference actual numbers from the data.\n\n"
+        f"FINANCIAL DATA:\n{session_context}"
+    )
+
+    # Build Gemini's multi-turn contents array from history
+    # Gemini uses "model" (not "assistant") for AI turns
+    contents = []
+    for msg in history:
+        contents.append({
+            "role": msg["role"],  # "user" or "model"
+            "parts": [{"text": msg["content"]}]
+        })
+
+    # Append the new user message
+    contents.append({
+        "role": "user",
+        "parts": [{"text": message}]
+    })
+
+    response = _client.models.generate_content(
+        model=_CHAT_MODEL,
+        contents=contents,
+        config=types.GenerateContentConfig(
+            system_instruction=system_instruction,
+            temperature=0.4,
+            max_output_tokens=1024
+        ) 
+    )
+
+    return response.text.strip()
 
 async def chat(message: str, financial_context: str) -> str:
     """
@@ -163,6 +211,6 @@ def run_scenario(scenario: str, financial_context: str) -> str:
     return response.text
 
 
-def build_context(summary: dict, by_category: list) -> str:
-    """Public helper so routers can build context without importing internals."""
-    return _build_financial_context(summary, by_category)
+# def build_context(summary: dict, by_category: list) -> str:
+#     """Public helper so routers can build context without importing internals."""
+#     return _build_financial_context(summary, by_category)

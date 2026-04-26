@@ -3,8 +3,8 @@
  * Keeping these separate makes it easy to extend when a real AI API is integrated.
  */
 
-/** Who sent the message */
-export type MessageRole = 'user' | 'assistant'
+/** Who sent the message — 'assistant' is used in the UI, 'model' is Gemini's format */
+export type MessageRole = 'user' | 'assistant' | 'model'
 
 /** A single message in the conversation */
 export interface ChatMessage {
