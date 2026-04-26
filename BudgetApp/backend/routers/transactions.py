@@ -9,8 +9,8 @@ from models.user import User
 from models.transaction import Transaction
 from schemas.transaction import TransactionCreate, TransactionUpdate, TransactionOut
 from utils.auth import get_current_user
-from utils.csv_handler import parse_transactions_csv, export_transactions_csv
-
+from utils.csv_handler import parse_transactions_csv
+from services.ai_service import _build_financial_context
 router = APIRouter()
 
 

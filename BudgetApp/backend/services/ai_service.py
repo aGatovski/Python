@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv
-from qlalchemy.orm import Session
+from sqlalchemy.orm import Session
 from services.merchant_service import _lookup_merchant, get_categories, _save_merchant
 from services.analytics_service import get_monthly_summary, get_expenses_by_category
 from services.budget_service import calculate_budget_status
@@ -54,22 +54,15 @@ def _build_financial_context(user_id: int, db: Session) -> str:
     """
     today = date.today()
     current_month = f"{today.year}-{today.month}"
-    
 
-    context = "=== FINANCIAL ASSISTANT CONTEXT ==="
-    user_bio = db.query(User.bio).filter(
-        User.user_id == user_id
-    ).scalar()
-    user_info = f"User Bio: {user_bio}"
-
-    monthly_summary = get_monthly_summary(db=db, user_id=user_id, month=date.today())
-    speding_by_category = get_expenses_by_category(db=db, user_id=user_id, month=date.today())
-    budgets = calculate_budget_status(db=db, user_id=user_id, month=date.today())
+    monthly_summary = get_monthly_summary(db=db, user_id=user_id, month=current_month)
+    speding_by_category = get_expenses_by_category(db=db, user_id=user_id, month=current_month)
+    budgets = calculate_budget_status(db=db, user_id=user_id, month=current_month)
     goals =  goal_summary(db=db, user_id=user_id)
     
     lines = [
         "=== FINANCIAL ASSISTANT CONTEXT ===",
-        f"Generated:" {today.isoformat()},
+        f"Generated: {current_month}",
         "",
         f"--- Current Month ({current_month}) ---",
         f"Total Income: {monthly_summary['total_income']}EUR",
@@ -106,25 +99,6 @@ def _build_financial_context(user_id: int, db: Session) -> str:
 
     print(lines)
     # return "\n".join(lines)
-
-def _build_financial_context(summary: dict, by_category: list) -> str:
-    """
-    Build a plain-text financial context block from pre-calculated data.
-    The AI model receives only this context — it never computes financial values itself.
-    """
-    lines = [
-        f"Month: {summary.get('month')}",
-        f"Total Income: {summary.get('total_income')}",
-        f"Total Expenses: {summary.get('total_expenses')}",
-        f"Net: {summary.get('net')}",
-        f"Savings Rate: {summary.get('savings_rate')}%",
-        f"Transaction Count: {summary.get('transaction_count')}",
-        "",
-        "Expenses by Category:",
-    ]
-    for item in by_category:
-        lines.append(f"  - {item['category']}: {item['total']}")
-    return "\n".join(lines)
 
 
 async def chat(message: str, financial_context: str) -> str:
