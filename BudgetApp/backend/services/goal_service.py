@@ -76,3 +76,23 @@ def compute_goal_forecast(db: Session, user_id: int, goal: Goal) -> dict:
         "on_track": on_track,
         "shortfall": shortfall,
     }
+
+def goal_summary(db: Session, user_id: int) -> dict:
+    goals = db.query(Goal).filter(Goal.user_id == user_id).all()
+
+    results = []
+    for goal in goals:
+        goal_name = goal.name
+        current_amount = goal.current_amount
+        target_amount = goal.target_amount
+        deadline = goal.deadline if goal.deadline is not None else "No deadline"
+
+        results.append({
+            "name": goal_name,
+            "current_amount": current_amount,
+            "target_amount": target_amount,
+            "deadline": deadline,
+        })
+
+    return results
+        

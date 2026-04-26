@@ -10,6 +10,8 @@ from utils.auth import get_current_user
 
 router = APIRouter()
 
+# suppose to fetch user categories from here...
+
 
 def get_user_categories(db: Session, user_id: int) -> List[Category]:
     """Get all available categories for a user (defaults + user-defined)."""

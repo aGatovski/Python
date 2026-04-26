@@ -20,7 +20,7 @@ def monthly_summary(
 ):
     return analytics_service.get_monthly_summary(db, current_user.id, month)
 
-
+#Is it used
 @router.get("/by-category")
 def by_category(
     month: Optional[str] = Query(None, description="e.g. 2026-03"),
@@ -32,7 +32,7 @@ def by_category(
         db, current_user.id, month=month, year=year
     )
 
-
+#Is it used
 @router.get("/trends")
 def spending_trends(
     year: Optional[int] = Query(default=None),

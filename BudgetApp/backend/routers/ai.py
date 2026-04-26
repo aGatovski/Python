@@ -9,6 +9,8 @@ from database import get_db
 from models.user import User
 from utils.auth import get_current_user
 from services import ai_service
+from google import genai
+from fastapi.responses import StreamingResponse
 
 router = APIRouter()
 

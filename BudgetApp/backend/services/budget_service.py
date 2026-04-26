@@ -43,3 +43,4 @@ def calculate_budget_status(db: Session, user_id: int, month: str) -> list:
         )
 
     return results
+

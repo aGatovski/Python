@@ -1,14 +1,19 @@
 import os
 from dotenv import load_dotenv
-from requests import Session
+from qlalchemy.orm import Session
 from services.merchant_service import _lookup_merchant, get_categories, _save_merchant
+from services.analytics_service import get_monthly_summary, get_expenses_by_category
+from services.budget_service import calculate_budget_status
+from services.goal_service import goal_summary
 from google import genai
 from google.genai import types
+from models.user import User
+from datetime import date
+from dateutil.relativedelta import relativedelta
 
 load_dotenv()
 
 _client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
-
 
 def categorize_transaction(description: str, db: Session) -> str:
     """Categorize a transaction description."""
@@ -18,7 +23,6 @@ def categorize_transaction(description: str, db: Session) -> str:
     if merchant_category:
         return merchant_category
     
-    # print(f"Merchant '{description}' not found in cache, using AI to categorize")
     # 2. If not found, use AI model to categorize
     categories = get_categories()
     prompt = (
@@ -30,7 +34,7 @@ def categorize_transaction(description: str, db: Session) -> str:
    )
 
     response = _client.models.generate_content(
-        model="gemini-2.5-flash-lite", 
+        model="gemini-2.0-flash", 
         contents=prompt,
         config=types.GenerateContentConfig(
             temperature=0.2,  # deterministic output
@@ -40,9 +44,68 @@ def categorize_transaction(description: str, db: Session) -> str:
 
     best_match = response.text.strip()
     _save_merchant(description, best_match, db) 
-    #print(f"Categorized '{description}' as '{best_match}' using AI and saved to cache")
+    
     return best_match
 
+def _build_financial_context(user_id: int, db: Session) -> str:
+    """
+    Build a plain-text financial context block from pre-calculated data.
+    The AI model receives only this context — it never computes financial values itself.
+    """
+    today = date.today()
+    current_month = f"{today.year}-{today.month}"
+    
+
+    context = "=== FINANCIAL ASSISTANT CONTEXT ==="
+    user_bio = db.query(User.bio).filter(
+        User.user_id == user_id
+    ).scalar()
+    user_info = f"User Bio: {user_bio}"
+
+    monthly_summary = get_monthly_summary(db=db, user_id=user_id, month=date.today())
+    speding_by_category = get_expenses_by_category(db=db, user_id=user_id, month=date.today())
+    budgets = calculate_budget_status(db=db, user_id=user_id, month=date.today())
+    goals =  goal_summary(db=db, user_id=user_id)
+    
+    lines = [
+        "=== FINANCIAL ASSISTANT CONTEXT ===",
+        f"Generated:" {today.isoformat()},
+        "",
+        f"--- Current Month ({current_month}) ---",
+        f"Total Income: {monthly_summary['total_income']}EUR",
+        f"Total Expenses: {monthly_summary['total_expenses']}EUR",
+        f"Net Savings: {monthly_summary['net']}EUR",
+        f"Savings Rate: {monthly_summary['savings_rate']}",
+        "",
+        "--- SPENDING BY CATEGORY ---",
+        ]
+    
+    for item in speding_by_category:
+        lines.append(f"{item['category']}: {item['total']}EUR")
+    
+    lines.append("")
+    lines.append(f"--- ACTIVE BUDGETS {current_month}---")
+    for budget in budgets:
+        lines.append(f"For {budget['category']}: spent {budget['spent']} of {budget['limit']}"
+                     f"Percentage used: {budget['percent_used']}")
+    
+    lines.append("")
+    lines.append("--- SAVINGS GOALS ---")
+    for goal in goals:
+        lines.append(f"For {goal['name']}: {goal['current_amount']} of {goal['target_amount']}"
+                     f"Deadline: {goal['deadline']}")
+
+    lines.append("")
+    lines.append("--- SPENDING TREND (last 3 months) ---")
+    for offset in range(3, 0, -1):
+        target_month = today - relativedelta(months=offset)
+        target_month_str =  f"{target_month.year}-{target_month.month}"
+        target_month_summary = get_monthly_summary(db, user_id, target_month_str)
+
+        lines.append(f"Month: {target_month}: {target_month_summary['total_expenses']} expenses")
+
+    print(lines)
+    # return "\n".join(lines)
 
 def _build_financial_context(summary: dict, by_category: list) -> str:
     """
@@ -64,7 +127,7 @@ def _build_financial_context(summary: dict, by_category: list) -> str:
     return "\n".join(lines)
 
 
-def chat(message: str, financial_context: str) -> str:
+async def chat(message: str, financial_context: str) -> str:
     """
     Send a user message to Gemini with pre-calculated financial context.
     The model is instructed never to compute or invent financial figures.
@@ -77,7 +140,8 @@ def chat(message: str, financial_context: str) -> str:
         "If the data does not contain enough information to answer, say so clearly.\n\n"
         f"Financial Data:\n{financial_context}"
     )
-    response = _model.generate_content(f"{system_prompt}\n\nUser: {message}")
+
+    response = _client.models.generate_content(model="gemini-2.0-flash", contents=f"{system_prompt}\n\nUser: {message}")
     return response.text
 
 
@@ -89,7 +153,8 @@ def generate_monthly_summary(financial_context: str) -> str:
         "(3-5 sentences). Do NOT invent or compute any numbers.\n\n"
         f"Financial Data:\n{financial_context}"
     )
-    response = _model.generate_content(prompt)
+    response = _client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
+
     return response.text
 
 
@@ -101,7 +166,8 @@ def get_suggestions(financial_context: str) -> str:
         "spending optimization suggestions. Do NOT invent or compute any numbers.\n\n"
         f"Financial Data:\n{financial_context}"
     )
-    response = _model.generate_content(prompt)
+    response = _client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
+
     return response.text
 
 
@@ -118,7 +184,8 @@ def run_scenario(scenario: str, financial_context: str) -> str:
         "of this scenario in qualitative terms. Do NOT compute new totals.\n\n"
         f"Financial Data:\n{financial_context}"
     )
-    response = _model.generate_content(prompt)
+    response = _client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
+
     return response.text
 
 
