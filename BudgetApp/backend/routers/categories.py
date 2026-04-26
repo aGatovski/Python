@@ -7,20 +7,9 @@ from models.user import User
 from models.category import Category
 from schemas.category import CategoryCreate, CategoryUpdate, CategoryOut
 from utils.auth import get_current_user
+from services.categories_service import get_user_categories
 
 router = APIRouter()
-
-# suppose to fetch user categories from here...
-
-
-def get_user_categories(db: Session, user_id: int) -> List[Category]:
-    """Get all available categories for a user (defaults + user-defined)."""
-    return (
-        db.query(Category)
-        .filter(Category.user_id == user_id)
-        .order_by(Category.name.desc())
-        .all()
-    )
 
 
 @router.get("", response_model=List[CategoryOut])
@@ -59,9 +48,15 @@ def rename_category(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    cat = db.query(Category).filter(Category.id == cat_id, Category.user_id == current_user.id).first()
+    cat = (
+        db.query(Category)
+        .filter(Category.id == cat_id, Category.user_id == current_user.id)
+        .first()
+    )
     if not cat:
-        raise HTTPException(status_code=404, detail="Category not found or not editable")
+        raise HTTPException(
+            status_code=404, detail="Category not found or not editable"
+        )
     cat.name = payload.name
     db.commit()
     db.refresh(cat)
@@ -74,8 +69,14 @@ def delete_category(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    cat = db.query(Category).filter(Category.id == cat_id, Category.user_id == current_user.id).first()
+    cat = (
+        db.query(Category)
+        .filter(Category.id == cat_id, Category.user_id == current_user.id)
+        .first()
+    )
     if not cat:
-        raise HTTPException(status_code=404, detail="Category not found or not deletable")
+        raise HTTPException(
+            status_code=404, detail="Category not found or not deletable"
+        )
     db.delete(cat)
     db.commit()
