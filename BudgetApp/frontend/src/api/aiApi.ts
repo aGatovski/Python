@@ -19,7 +19,7 @@ interface ChatResponse {
  * Store this in React state — send it with every subsequent message.
  */
 export async function initChatSession(): Promise<string> {
-  const data = await api.get<InitResponse>('/ai/chat/init')
+  const data = await api.get<InitResponse>('/api/ai/chat/init')
   return data.session_context
 }
 
@@ -46,7 +46,7 @@ export async function sendChatMessage(
       content: m.content,
     }))
 
-  const data = await api.post<ChatResponse>('/ai/chat', {
+  const data = await api.post<ChatResponse>('/api/ai/chat', {
     message,
     history: apiHistory,
     session_context: sessionContext,
