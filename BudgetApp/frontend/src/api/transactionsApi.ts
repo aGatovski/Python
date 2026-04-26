@@ -87,6 +87,24 @@ export async function deleteTransaction(id: string): Promise<void> {
 }
 
 /**
+ * Updates a single transaction via PUT /api/transactions/:id.
+ * Sends only the fields that changed (partial update).
+ * Returns the updated transaction mapped to the frontend Transaction shape.
+ */
+export async function updateTransaction(
+  id: string,
+  data: Partial<Omit<Transaction, 'id'>>
+): Promise<Transaction> {
+  const raw = await api.put<BackendTransaction>(`/api/transactions/${id}`, {
+    date: data.date,
+    amount: data.amount,
+    category: data.category,
+    description: data.description,
+  })
+  return mapTransaction(raw)
+}
+
+/**
  * Imports transactions from a CSV file via POST /api/transactions/import.
  * Sends the file as multipart/form-data and returns the imported transactions
  * mapped to the frontend Transaction shape.

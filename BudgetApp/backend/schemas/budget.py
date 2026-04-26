@@ -6,12 +6,10 @@ from typing import Optional
 class BudgetCreate(BaseModel):
     category: str
     limit: float
-    #period: str = "monthly"  # "monthly" | "yearly"
 
 
 class BudgetUpdate(BaseModel):
     limit: Optional[float] = None
-    #period: Optional[str] = None
 
 
 class BudgetOut(BaseModel):
@@ -30,4 +28,3 @@ class BudgetStatus(BaseModel):
     spent: float
     remaining: float
     percent_used: float
-    # status: str  # "on_track" | "warning" | "exceeded"

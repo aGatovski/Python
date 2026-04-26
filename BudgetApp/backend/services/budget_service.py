@@ -5,9 +5,7 @@ from models.budget import Budget
 from models.transaction import Transaction
 
 
-def calculate_budget_status(
-         db: Session, user_id: int, 
-         month: str) -> list:
+def calculate_budget_status(db: Session, user_id: int, month: str) -> list:
     """
     For each budget belonging to the user, compute spent/remaining/percent_used/status
     for the given month. All calculations are deterministic SQL aggregates — no AI inference.
@@ -15,7 +13,7 @@ def calculate_budget_status(
     year, mon = int(month[:4]), int(month[5:7])
     budgets = db.query(Budget).filter(Budget.user_id == user_id).all()
 
-    results = [] # [limit: , amount spent: ]
+    results = []  # [limit: , amount spent: ]
     for budget in budgets:
         spent_raw = (
             db.query(func.coalesce(func.sum(Transaction.amount), 0.0))
@@ -30,14 +28,9 @@ def calculate_budget_status(
         )
         spent = round(abs(float(spent_raw)), 2)
         remaining = round(budget.limit - spent, 2)
-        percent_used = round((spent / budget.limit * 100), 2) if budget.limit > 0 else 0.0
-
-    #     if percent_used >= 100:
-    #         status = "exceeded"
-    #     elif percent_used >= 80:
-    #         status = "warning"
-    #     else:
-    #         status = "on_track"
+        percent_used = (
+            round((spent / budget.limit * 100), 2) if budget.limit > 0 else 0.0
+        )
 
         results.append(
             {
@@ -46,20 +39,7 @@ def calculate_budget_status(
                 "spent": spent,
                 "remaining": remaining,
                 "percent_used": percent_used,
-                #"status": status,
             }
         )
-    # return [{
-    #     "category": "Groceries",
-    #     "limit": 200.0,
-    #     "spent": 120.50
-    #     }
-    # ]
+
     return results
-    return [
-        {"category": "Groceries",     "limit": 200.0, "spent": 120.50, "remaining": 79.50,  "percent_used": 60.25, "status": "on_track"},
-        {"category": "Dining",        "limit": 100.0, "spent": 85.00,  "remaining": 15.00,  "percent_used": 85.0,  "status": "warning"},
-        {"category": "Transport",     "limit": 80.0,  "spent": 90.00,  "remaining": -10.00, "percent_used": 112.5, "status": "exceeded"},
-        {"category": "Utilities",     "limit": 150.0, "spent": 60.00,  "remaining": 90.00,  "percent_used": 40.0,  "status": "on_track"},
-        {"category": "Entertainment", "limit": 50.0,  "spent": 30.00,  "remaining": 20.00,  "percent_used": 60.0,  "status": "on_track"},
-    ]

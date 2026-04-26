@@ -11,7 +11,8 @@ from services.goal_service import compute_goal_forecast
 
 router = APIRouter()
 
-#OK
+
+# OK
 @router.get("", response_model=List[GoalOut])
 def list_goals(
     db: Session = Depends(get_db),
@@ -20,7 +21,7 @@ def list_goals(
     return db.query(Goal).filter(Goal.user_id == current_user.id).all()
 
 
-#OK
+# OK
 @router.post("", response_model=GoalOut, status_code=status.HTTP_201_CREATED)
 def create_goal(
     payload: GoalCreate,
@@ -34,20 +35,20 @@ def create_goal(
     return goal
 
 
-#Potentially remove
-@router.get("/{goal_id}", response_model=GoalOut)
-def get_goal(
-    goal_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    goal = db.query(Goal).filter(Goal.id == goal_id, Goal.user_id == current_user.id).first()
-    if not goal:
-        raise HTTPException(status_code=404, detail="Goal not found")
-    return goal
+# #Potentially remove
+# @router.get("/{goal_id}", response_model=GoalOut)
+# def get_goal(
+#     goal_id: int,
+#     db: Session = Depends(get_db),
+#     current_user: User = Depends(get_current_user),
+# ):
+#     goal = db.query(Goal).filter(Goal.id == goal_id, Goal.user_id == current_user.id).first()
+#     if not goal:
+#         raise HTTPException(status_code=404, detail="Goal not found")
+#     return goal
 
 
-#OK
+# OK
 @router.put("/{goal_id}", response_model=GoalOut)
 def update_goal(
     goal_id: int,
@@ -55,7 +56,11 @@ def update_goal(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    goal = db.query(Goal).filter(Goal.id == goal_id, Goal.user_id == current_user.id).first()
+    goal = (
+        db.query(Goal)
+        .filter(Goal.id == goal_id, Goal.user_id == current_user.id)
+        .first()
+    )
     if not goal:
         raise HTTPException(status_code=404, detail="Goal not found")
     for field, value in payload.model_dump(exclude_unset=True).items():
@@ -65,28 +70,32 @@ def update_goal(
     return goal
 
 
-#OK
+# OK
 @router.delete("/{goal_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_goal(
     goal_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    goal = db.query(Goal).filter(Goal.id == goal_id, Goal.user_id == current_user.id).first()
+    goal = (
+        db.query(Goal)
+        .filter(Goal.id == goal_id, Goal.user_id == current_user.id)
+        .first()
+    )
     if not goal:
         raise HTTPException(status_code=404, detail="Goal not found")
     db.delete(goal)
     db.commit()
 
 
-#Potentially remove
-@router.get("/{goal_id}/forecast", response_model=GoalForecast)
-def get_goal_forecast(
-    goal_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    goal = db.query(Goal).filter(Goal.id == goal_id, Goal.user_id == current_user.id).first()
-    if not goal:
-        raise HTTPException(status_code=404, detail="Goal not found")
-    return compute_goal_forecast(db, current_user.id, goal)
+# #Potentially remove
+# @router.get("/{goal_id}/forecast", response_model=GoalForecast)
+# def get_goal_forecast(
+#     goal_id: int,
+#     db: Session = Depends(get_db),
+#     current_user: User = Depends(get_current_user),
+# ):
+#     goal = db.query(Goal).filter(Goal.id == goal_id, Goal.user_id == current_user.id).first()
+#     if not goal:
+#         raise HTTPException(status_code=404, detail="Goal not found")
+#     return compute_goal_forecast(db, current_user.id, goal)

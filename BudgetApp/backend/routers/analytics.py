@@ -10,7 +10,8 @@ from services import analytics_service
 
 router = APIRouter()
 
-#OK
+
+# OK
 @router.get("/summary/{month}")
 def monthly_summary(
     month: str,
@@ -27,14 +28,9 @@ def by_category(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return analytics_service.get_expenses_by_category(db, current_user.id, month=month, year=year)
-    return [
-        {"category": "Groceries", "total": 120.50},
-        {"category": "Dining", "total": 85.00},
-        {"category": "Transport", "total": 45.20},
-        {"category": "Utilities", "total": 60.00},
-        {"category": "Entertainment", "total": 30.00},
-    ]
+    return analytics_service.get_expenses_by_category(
+        db, current_user.id, month=month, year=year
+    )
 
 
 @router.get("/trends")
@@ -71,7 +67,8 @@ def spending_trends(
         for r in rows
     ]
 
-#OK
+
+# OK
 @router.get("/overview")
 def dashboard_overview(
     db: Session = Depends(get_db),
@@ -80,17 +77,20 @@ def dashboard_overview(
     """Full dashboard: current month summary + budget status + category breakdown."""
     today = date.today()
     month = f"{today.year}-{today.month:02d}"
-    month = "2026-01"
 
-    monthly_summary = analytics_service.get_monthly_summary(month=month, db=db, user_id=current_user.id)
-    expenses_by_category = analytics_service.get_expenses_by_category(db=db, user_id=current_user.id, month=month)
+    monthly_summary = analytics_service.get_monthly_summary(
+        month=month, db=db, user_id=current_user.id
+    )
+    expenses_by_category = analytics_service.get_expenses_by_category(
+        db=db, user_id=current_user.id, month=month
+    )
 
     from services.budget_service import calculate_budget_status
+
     budget_status = calculate_budget_status(db, current_user.id, month)
-    
+
     return {
         "month": month,
-
         "summary": monthly_summary,
         "expenses_by_category": expenses_by_category,
         "budget_status": budget_status,

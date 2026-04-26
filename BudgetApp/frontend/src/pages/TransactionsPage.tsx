@@ -4,7 +4,7 @@ import {
   TransactionFormData,
   SortConfig,
 } from '../types/transaction'
-import { fetchTransactions, importTransactions, createTransaction, fetchCategories, deleteTransaction } from '../api/transactionsApi'
+import { fetchTransactions, importTransactions, createTransaction, updateTransaction, fetchCategories, deleteTransaction } from '../api/transactionsApi'
 import TransactionTable from '../components/TransactionTable'
 import TransactionForm from '../components/TransactionForm'
 import SortControls from '../components/SortControls'
@@ -178,8 +178,11 @@ export default function TransactionsPage() {
         const created = await createTransaction(data)
         setTransactions((prev) => [created, ...prev])
       } else if (modalMode === 'edit' && editingTransaction) {
+        // Persist the update on the server; only update local state on success
+        // to prevent the UI from diverging from the backend on failure.
+        const updated = await updateTransaction(editingTransaction.id, data)
         setTransactions((prev) =>
-          prev.map((t) => (t.id === editingTransaction.id ? { ...t, ...data } : t))
+          prev.map((t) => (t.id === editingTransaction.id ? updated : t))
         )
       }
       setModalMode(null)

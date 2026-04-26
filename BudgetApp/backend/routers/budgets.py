@@ -56,16 +56,16 @@ def get_budget_status(
         target_month)
 
 
-@router.get("/{budget_id}", response_model=BudgetOut)
-def get_budget(
-    budget_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    budget = db.query(Budget).filter(Budget.id == budget_id, Budget.user_id == current_user.id).first()
-    if not budget:
-        raise HTTPException(status_code=404, detail="Budget not found")
-    return budget
+# @router.get("/{budget_id}", response_model=BudgetOut)
+# def get_budget(
+#     budget_id: int,
+#     db: Session = Depends(get_db),
+#     current_user: User = Depends(get_current_user),
+# ):
+#     budget = db.query(Budget).filter(Budget.id == budget_id, Budget.user_id == current_user.id).first()
+#     if not budget:
+#         raise HTTPException(status_code=404, detail="Budget not found")
+#     return budget
 
 
 #OK
