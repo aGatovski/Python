@@ -14,7 +14,7 @@ from dateutil.relativedelta import relativedelta
 load_dotenv()
 
 _client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
-_CHAT_MODEL = "gemini-2.0-flash"
+_CHAT_MODEL = "gemini-2.5-flash"
 
 def categorize_transaction(description: str, db: Session) -> str:
     """Categorize a transaction description."""
