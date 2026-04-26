@@ -43,6 +43,7 @@ def list_transactions(
 
     return query.all()
 
+
 # response_model converts the return(tx) to schema TransactionOut JSON
 @router.post("", response_model=TransactionOut, status_code=status.HTTP_201_CREATED)
 def create_transaction(
@@ -57,26 +58,10 @@ def create_transaction(
     return tx
 
 
-@router.get("/export", response_class=PlainTextResponse)
-def export_transactions(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    txs = db.query(Transaction).filter(Transaction.user_id == current_user.id).all()
-    rows = [
-        {
-            "id": t.id,
-            "date": str(t.date),
-            "amount": t.amount,
-            "category": t.category,
-            "description": t.description,
-        }
-        for t in txs
-    ]
-    return export_transactions_csv(rows)
-
-
-@router.post("/import", response_model=List[TransactionOut], status_code=status.HTTP_201_CREATED)
+# ok
+@router.post(
+    "/import", response_model=List[TransactionOut], status_code=status.HTTP_201_CREATED
+)
 async def import_transactions(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
@@ -88,13 +73,17 @@ async def import_transactions(
     for row in rows:
         # Check if transaction already exists (duplicate detection)
         # Use date, amount, description, and category as duplicate key
-        existing = db.query(Transaction).filter(
-            Transaction.user_id == current_user.id,
-            Transaction.date == row["date"],
-            Transaction.amount == row["amount"],
-            Transaction.description == row["description"],
-            Transaction.category == row["category"],
-        ).first()
+        existing = (
+            db.query(Transaction)
+            .filter(
+                Transaction.user_id == current_user.id,
+                Transaction.date == row["date"],
+                Transaction.amount == row["amount"],
+                Transaction.description == row["description"],
+                Transaction.category == row["category"],
+            )
+            .first()
+        )
 
         if existing:
             # Skip duplicate transaction
@@ -110,18 +99,7 @@ async def import_transactions(
     return created
 
 
-@router.get("/{tx_id}", response_model=TransactionOut)
-def get_transaction(
-    tx_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    tx = db.query(Transaction).filter(Transaction.id == tx_id, Transaction.user_id == current_user.id).first()
-    if not tx:
-        raise HTTPException(status_code=404, detail="Transaction not found")
-    return tx
-
-
+# ok
 @router.put("/{tx_id}", response_model=TransactionOut)
 def update_transaction(
     tx_id: int,
@@ -129,7 +107,11 @@ def update_transaction(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    tx = db.query(Transaction).filter(Transaction.id == tx_id, Transaction.user_id == current_user.id).first()
+    tx = (
+        db.query(Transaction)
+        .filter(Transaction.id == tx_id, Transaction.user_id == current_user.id)
+        .first()
+    )
     if not tx:
         raise HTTPException(status_code=404, detail="Transaction not found")
     for field, value in payload.model_dump(exclude_unset=True).items():
@@ -139,13 +121,18 @@ def update_transaction(
     return tx
 
 
+# ok
 @router.delete("/{tx_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_transaction(
     tx_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    tx = db.query(Transaction).filter(Transaction.id == tx_id, Transaction.user_id == current_user.id).first()
+    tx = (
+        db.query(Transaction)
+        .filter(Transaction.id == tx_id, Transaction.user_id == current_user.id)
+        .first()
+    )
     if not tx:
         raise HTTPException(status_code=404, detail="Transaction not found")
     db.delete(tx)
