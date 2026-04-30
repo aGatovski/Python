@@ -12,7 +12,7 @@ def load_merchant_cache(db: Session) -> None:
 
     for merchant in merchants:
         _merchant_cache[merchant.merchant_name.lower()] = merchant.category
-        # print(f"Loaded merchant '{merchant.merchant_name}' with category '{merchant.category}' into cache")
+        print(f"Loaded merchant '{merchant.merchant_name}' with category '{merchant.category}' into cache")
 
 
 def _lookup_merchant(merchant_name: str) -> Optional[str]:
@@ -60,3 +60,11 @@ def update_merchant_category(merchant_name: str, category: str, db: Session) -> 
 def get_categories() -> tuple[str]:
     """Return a list of unique categories from the merchant cache."""
     return tuple(set(_merchant_cache.values()))
+
+
+
+def get_training_data() -> tuple[list[str], list[str]]: 
+    """Returns A matrix for training the AI model. It contains all known merchant names and their categories."""
+    merchants = list(_merchant_cache.keys())
+    categories = list(_merchant_cache.values())
+    return merchants, categories
