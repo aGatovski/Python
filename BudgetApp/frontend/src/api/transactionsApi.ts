@@ -45,7 +45,8 @@ export async function fetchCategories(): Promise<string[]> {
     "Gas",
     "Other",
     "Entertainment",
-    "Utilities",
+    "Transfer",
+    "Retail Store",
     "Rent",
     "Income",
     "Activity"
