@@ -9,6 +9,4 @@ class Category(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
-    # user_id is NULL for default/system categories
     name: Mapped[str] = mapped_column(String)
-  

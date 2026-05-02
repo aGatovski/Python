@@ -8,4 +8,3 @@ class MerchantData(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     merchant_name: Mapped[str] = mapped_column(String)
     category: Mapped[str] = mapped_column(String)
-   
