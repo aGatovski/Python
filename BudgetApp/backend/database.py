@@ -16,12 +16,3 @@ def get_db():
         yield db
     finally:
         db.close()
-
-from services.merchant_service import load_merchant_cache
-
-# ONE TIME: Load cache when app starts
-_cache_session = SessionLocal()
-try:
-    load_merchant_cache(_cache_session)  # Load for the whole app
-finally:
-    _cache_session.close()

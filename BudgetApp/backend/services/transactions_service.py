@@ -15,19 +15,27 @@ _CHAT_MODEL = "gemini-2.5-flash"
 
 # Load the model
 model = SentenceTransformer('all-MiniLM-L6-v2')
-merchants, categories = get_training_data()
-
-# Convert all merchant names to embeddings at once
-# Passing a list [] ensures X is a 2D array (n_samples, 384)
-X = model.encode(merchants) 
-y = categories
-
-# Train the classifier on the full dataset
 classifier = LogisticRegression(max_iter=1000)
-classifier.fit(X, y)
+_is_trained = False
+
+def train_classifier() -> None:
+    global _is_trained
+    merchants, categories = get_training_data()
+    
+    # Convert all merchant names to embeddings at once
+    # Passing a list [] ensures X is a 2D array (n_samples, 384)
+    X = model.encode(merchants) 
+    y = categories
+
+    classifier.fit(X, y)   
+    _is_trained = True 
+
 
 def categorize_transaction(description: str, db: Session) -> str:
     """Categorize a transaction description."""
+    if not _is_trained:
+        raise RuntimeError("Classifier not trained yet")
+    
     description = description.lower().strip()
     # Use [description] to ensure the output is 2D
     new_vector = model.encode([description]) 
