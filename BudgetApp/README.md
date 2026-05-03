@@ -1,92 +1,172 @@
-🗂️ Project Overview
-BudgetApp is a full-stack personal finance management application. It allows users to track transactions, manage budgets, set financial goals, analyze spending by category, and interact with an AI-powered financial assistant. The architecture is cleanly split into a Python backend and a React/TypeScript frontend.
+# 💸 BudgetApp
 
-🛠️ Technologies & Frameworks
-Backend
-Layer	Technology
-Language	Python 3.x
-Web Framework	FastAPI
-Data Validation	Pydantic (models/schemas)
-AI Integration	OpenAI API (GPT-based chat assistant)
-Data Persistence	CSV files (via custom csv_handler utility)
-Server	Uvicorn (ASGI server)
-CORS	FastAPI CORSMiddleware
-Frontend
-Layer	Technology
-Language	TypeScript
-Framework	React (functional components + hooks)
-Styling	Tailwind CSS
-HTTP Client	Fetch API (abstracted in /api/ layer)
-Routing	React Router
-State Management	Local component state (useState, useEffect)
-Charts	Abstracted chart components
-🏗️ Software Engineering Patterns
-1. Layered Architecture (N-Tier)
-The backend is strictly separated into three layers:
+An AI-powered personal finance backend built with FastAPI, PostgreSQL, and Gemini. Features a self-improving ML transaction classifier, an agentic chat assistant with function-calling, and a RAG-style financial context engine.
 
-Routers (/routers/) — HTTP request handling, route definitions (Controller layer)
-Services (/services/) — Business logic (Service layer)
-Utils (/utils/) — Cross-cutting concerns like CSV I/O (Infrastructure layer)
-This mirrors the classic Controller → Service → Repository pattern.
+---
 
-2. Repository / Data Access Pattern
-The csv_handler.py utility acts as a lightweight data access layer, abstracting all file I/O operations. Services never directly touch the filesystem — they delegate to this utility.
+## ✨ Key Features
 
-3. Service Layer Pattern
-Each domain (budgets, goals, transactions, categories, AI) has a dedicated service file (budget_service.py, goal_service.py, etc.) that encapsulates all business rules. Routers are kept thin — they only parse requests and delegate to services.
+### 🤖 Two-Tier Intelligent Transaction Classifier
+Transactions are categorised automatically through a two-stage pipeline:
+1. **Sentence-embedding model** (`all-MiniLM-L6-v2`) converts merchant descriptions into vector representations, fed into a **logistic regression classifier** for high-confidence predictions
+2. **LLM fallback (Gemini)** handles low-confidence cases — and those outputs are written back to the merchant database, continuously retraining the classifier over time (self-improving loop)
 
-4. API Abstraction Layer (Frontend)
-The frontend has a dedicated /api/ directory (aiApi.ts, budgetsApi.ts, goalsApi.ts, etc.) that wraps all HTTP calls. Pages and components never call fetch directly — they use these typed API functions. This is the Facade Pattern applied to API communication.
+### 🧠 Agentic Chat Assistant
+A conversational financial assistant powered by **Gemini function-calling**. The model can autonomously execute real actions — like creating budgets — directly from natural language, not just describe them.
 
-5. Separation of Concerns
-Backend: routers ≠ services ≠ data access
-Frontend: pages ≠ API calls ≠ type definitions
-Types are centralized in /types/ (e.g., chat.ts) for reuse across components
-6. Pydantic Schema Validation (DTO Pattern)
-All incoming and outgoing data on the backend is validated through Pydantic models, acting as Data Transfer Objects (DTOs). This enforces strict typing at the API boundary.
+### 📊 RAG-Style Financial Context Engine
+Each chat session builds a structured context block from deterministic, pre-computed data: current month summary, spending by category, budget status, savings goals, and a 3-month spending trend. The LLM is grounded entirely in this data — it never invents figures.
 
-7. Single Responsibility Principle (SOLID)
-Each module has one clear job:
+### 📁 CSV Import with Auto-Categorisation
+Users can bulk-import transaction histories (e.g. from Revolut or DSK Bank). Each row is automatically categorised by the ML pipeline on import, with duplicate detection to prevent re-imports.
 
-ai_service.py → only handles OpenAI communication
-csv_handler.py → only handles CSV read/write
-categories_service.py → only manages category logic
-8. Component-Based UI Architecture
-The frontend follows React's component model with reusable, self-contained components. Pages (AIAssistantPage.tsx, BudgetsPage.tsx) compose smaller components and manage their own local state.
+### 📈 Analytics & Budget Tracking
+- Monthly summaries: income, expenses, net savings, savings rate
+- Spending breakdown by category (filterable by month/year)
+- Budget status per category: spent, remaining, % used
+- Savings goal forecasting with projected completion dates
 
-9. RESTful API Design
-The backend exposes a clean REST API with resource-based routing (/goals, /budgets, /analytics, /categories, /ai), standard HTTP verbs, and JSON payloads.
+---
 
-📁 High-Level Project Structure
+## 🛠️ Tech Stack
 
+| Layer | Technology |
+|---|---|
+| Language | Python 3.x |
+| Web Framework | FastAPI |
+| Database | PostgreSQL (via SQLAlchemy ORM) |
+| Schema Validation | Pydantic v2 |
+| AI / LLM | Google Gemini API (`gemini-2.5-flash`) |
+| Embeddings | Sentence Transformers (`all-MiniLM-L6-v2`) |
+| Classifier | Scikit-learn Logistic Regression |
+| Auth | JWT (access + refresh tokens via `python-jose`) |
+| Server | Uvicorn (ASGI) |
+
+---
+
+## 🏗️ Architecture
+
+```
 BudgetApp/
-├── backend/
-│   ├── main.py                  # FastAPI app entry point, CORS, router registration
-│   ├── models/                  # Pydantic data models (DTOs)
-│   ├── routers/                 # Route handlers (thin controllers)
-│   │   ├── goals.py
-│   │   ├── analytics.py
-│   │   ├── categories.py
-│   │   └── ai.py
-│   ├── services/                # Business logic
-│   │   ├── budget_service.py
-│   │   ├── goal_service.py
-│   │   ├── transactions_service.py
-│   │   ├── categories_service.py
-│   │   └── ai_service.py
-│   └── utils/
-│       └── csv_handler.py       # Data persistence abstraction
-│
-└── frontend/
-    └── src/
-        ├── api/                 # API abstraction layer
-        │   ├── aiApi.ts
-        │   ├── budgetsApi.ts
-        │   └── goalsApi.ts
-        ├── pages/               # Full page components
-        │   ├── AIAssistantPage.tsx
-        │   └── BudgetsPage.tsx
-        └── types/               # Shared TypeScript type definitions
-            └── chat.ts
-✅ Summary in One Paragraph
-BudgetApp is a full-stack FinTech application built with FastAPI (Python) on the backend and React + TypeScript + Tailwind CSS on the frontend. The backend follows a strict Layered Architecture with a Service Layer pattern, Repository/Data Access abstraction via CSV, and Pydantic DTOs for type-safe API contracts. The frontend applies a Facade pattern through a dedicated API layer, component-based UI architecture, and strong TypeScript typing. The entire codebase adheres to SOLID principles, particularly Single Responsibility and Separation of Concerns, making it clean, maintainable, and ready to scale into a production application.
+├── main.py                   # App entry point, lifespan, CORS, router registration
+├── routers/                  # Thin HTTP controllers (one per domain)
+│   ├── transactions.py
+│   ├── budgets.py
+│   ├── goals.py
+│   ├── categories.py
+│   ├── analytics.py
+│   ├── ai.py
+│   └── auth.py
+├── services/                 # All business logic
+│   ├── transactions_service.py   # ML classifier + LLM fallback
+│   ├── ai_service.py             # Gemini chat, context builder, tool definitions
+│   ├── analytics_service.py      # Aggregation queries
+│   ├── budget_service.py         # Budget status calculations
+│   ├── goal_service.py           # Goal forecasting
+│   ├── merchant_service.py       # Merchant cache + DB
+│   └── categories_service.py
+├── models/                   # SQLAlchemy ORM models
+├── schemas/                  # Pydantic DTOs (request/response validation)
+├── utils/
+│   ├── auth.py               # JWT creation, hashing, current_user dependency
+│   └── csv_handler.py        # CSV import pipeline
+├── config.py                 # Pydantic settings (env vars)
+└── database.py               # Engine, session, Base
+```
+
+The backend follows a strict **Controller → Service** layered architecture. Routers are kept thin — they handle HTTP and delegate everything else to services. All API boundaries are validated through Pydantic DTOs.
+
+---
+
+## 🔄 ML Pipeline — How It Works
+
+```
+CSV Import / Manual Transaction
+          │
+          ▼
+  Merchant Description
+          │
+          ▼
+  Sentence Embedding (MiniLM)
+          │
+          ▼
+  Logistic Regression Classifier
+          │
+    ┌─────┴─────┐
+confidence > 0.5?
+    │           │
+   YES          NO
+    │           │
+    ▼           ▼
+ Category    Gemini LLM
+ returned    (fallback)
+                │
+                ▼
+       Save to merchant DB
+       (retrains classifier
+        on next startup)
+```
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+- Python 3.10+
+- PostgreSQL running locally
+- Google Gemini API key
+
+### Setup
+
+```bash
+git clone https://github.com/aGatovski/BudgetApp
+cd BudgetApp
+
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+
+pip install -r requirements.txt
+```
+
+Create a `.env` file:
+
+```env
+DATABASE_URL=postgresql://user:password@localhost:5432/budgetapp
+GOOGLE_API_KEY=your_gemini_api_key
+SECRET_KEY=your_jwt_secret
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+REFRESH_TOKEN_EXPIRE_DAYS=7
+```
+
+Run the server:
+
+```bash
+uvicorn main:app --reload
+```
+
+API docs available at `http://localhost:8000/docs`
+
+---
+
+## 📡 API Overview
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/auth/register` | Register a new user |
+| `POST` | `/api/auth/login` | Login, receive JWT tokens |
+| `GET` | `/api/transactions` | List transactions (filterable) |
+| `POST` | `/api/transactions/import` | Bulk import CSV with auto-categorisation |
+| `GET` | `/api/analytics/overview` | Full dashboard: summary + budgets + categories |
+| `GET` | `/api/budgets/status` | Budget status for current month |
+| `GET` | `/api/ai/chat/init` | Build session financial context (call once) |
+| `POST` | `/api/ai/chat` | Send message with conversation history |
+
+---
+
+## 🔮 Roadmap
+
+- [ ] Add classifier accuracy metrics + evaluation script
+- [ ] Frontend (React + TypeScript)
+- [ ] Goal contribution tracking
+- [ ] Multi-currency support
+- [ ] Docker + deployment config
