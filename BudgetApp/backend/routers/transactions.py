@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query, status
-from fastapi.responses import PlainTextResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import extract
 from typing import Optional, List
@@ -10,7 +9,6 @@ from models.transaction import Transaction
 from schemas.transaction import TransactionCreate, TransactionUpdate, TransactionOut
 from utils.auth import get_current_user
 from utils.csv_handler import parse_transactions_csv
-from services.ai_service import _build_financial_context
 router = APIRouter()
 
 
@@ -44,7 +42,6 @@ def list_transactions(
     return query.all()
 
 
-# response_model converts the return(tx) to schema TransactionOut JSON
 @router.post("", response_model=TransactionOut, status_code=status.HTTP_201_CREATED)
 def create_transaction(
     payload: TransactionCreate,
@@ -58,7 +55,6 @@ def create_transaction(
     return tx
 
 
-# ok
 @router.post(
     "/import", response_model=List[TransactionOut], status_code=status.HTTP_201_CREATED
 )
@@ -71,8 +67,6 @@ async def import_transactions(
     created = []
 
     for row in rows:
-        # Check if transaction already exists (duplicate detection)
-        # Use date, amount, description, and category as duplicate key
         existing = (
             db.query(Transaction)
             .filter(
@@ -99,7 +93,6 @@ async def import_transactions(
     return created
 
 
-# ok
 @router.put("/{tx_id}", response_model=TransactionOut)
 def update_transaction(
     tx_id: int,
@@ -121,7 +114,6 @@ def update_transaction(
     return tx
 
 
-# ok
 @router.delete("/{tx_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_transaction(
     tx_id: int,

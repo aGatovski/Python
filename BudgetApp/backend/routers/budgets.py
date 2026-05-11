@@ -2,7 +2,6 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from typing import List
 from datetime import date
-
 from database import get_db
 from models.user import User
 from models.budget import Budget

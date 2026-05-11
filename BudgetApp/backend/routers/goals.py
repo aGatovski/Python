@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
-
 from database import get_db
 from models.user import User
 from models.goal import Goal
@@ -12,7 +11,6 @@ from services.goal_service import compute_goal_forecast
 router = APIRouter()
 
 
-# OK
 @router.get("", response_model=List[GoalOut])
 def list_goals(
     db: Session = Depends(get_db),
@@ -21,7 +19,6 @@ def list_goals(
     return db.query(Goal).filter(Goal.user_id == current_user.id).all()
 
 
-# OK
 @router.post("", response_model=GoalOut, status_code=status.HTTP_201_CREATED)
 def create_goal(
     payload: GoalCreate,
@@ -35,7 +32,6 @@ def create_goal(
     return goal
 
 
-# OK
 @router.put("/{goal_id}", response_model=GoalOut)
 def update_goal(
     goal_id: int,
@@ -57,7 +53,6 @@ def update_goal(
     return goal
 
 
-# OK
 @router.delete("/{goal_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_goal(
     goal_id: int,
