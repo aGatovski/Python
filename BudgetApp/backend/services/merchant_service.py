@@ -1,5 +1,4 @@
 from requests import Session
-from typing import Optional
 from models.merchant_data import MerchantData
 
 #{merchant_name: category_name}
@@ -15,14 +14,7 @@ def load_merchant_cache(db: Session) -> None:
         print(f"Loaded merchant '{merchant.merchant_name}' with category '{merchant.category}' into cache")
 
 
-def _lookup_merchant(merchant_name: str) -> Optional[str]:
-    """Lookup a merchant name in the cache and return its category if found."""
-    normalized_name = merchant_name.lower().strip()
-    # print(f"Looking up merchant '{normalized_name}' in cache returned: {_merchant_cache.get(normalized_name)}")
-    return _merchant_cache.get(normalized_name)
-
-
-def _save_merchant(merchant_name: str, category: str, db: Session) -> None:
+def save_merchant(merchant_name: str, category: str, db: Session) -> None:
     normalized_name = merchant_name.lower().strip()
     merchant = MerchantData(merchant_name=normalized_name, category=category)
     
@@ -64,7 +56,8 @@ def get_categories() -> tuple[str]:
 
 
 def get_training_data() -> tuple[list[str], list[str]]: 
-    """Returns A matrix for training the AI model. It contains all known merchant names and their categories."""
+    """Returns A matrix for training the AI model. 
+    It contains all known merchant names and their categories."""
     merchants = list(_merchant_cache.keys())
     categories = list(_merchant_cache.values())
     return merchants, categories

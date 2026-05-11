@@ -1,7 +1,7 @@
 import os
 from dotenv import load_dotenv
 from sqlalchemy.orm import Session
-from services.merchant_service import _lookup_merchant, get_categories, _save_merchant, get_training_data
+from services.merchant_service import save_merchant, get_training_data
 from google import genai
 from google.genai import types
 from sentence_transformers import SentenceTransformer
@@ -78,6 +78,6 @@ def categorize_transaction(description: str, db: Session) -> str:
 
     # Save the LLM's answer back to the DB 
     # This fine-tunes the ML model's training data automatically
-    _save_merchant(description, llm_category, db)
+    save_merchant(description, llm_category, db)
     
     return llm_category

@@ -5,7 +5,6 @@ from sqlalchemy.orm import Session
 from models import category
 from schemas import budget
 from models.budget import Budget
-from services.merchant_service import _lookup_merchant, get_categories, _save_merchant
 from services.analytics_service import get_monthly_summary, get_expenses_by_category
 from services.budget_service import calculate_budget_status
 from services.goal_service import goal_summary
@@ -254,51 +253,3 @@ def create_new_budget(user_id: int, db: Session, category: str, limit_amount: fl
     db.refresh(budget)
     return f"Successfully created a budget of {limit_amount} EUR for {category}."
     return budget
-    
-    
-
-# 1. Define your tools as standard Python functions with type hints and docstrings.
-# The model uses the docstring to understand WHEN to trigger this tool.
-# def create_new_budget(category: str, limit_amount: float) -> str:
-#     """
-#     Creates a new monthly budget for a specific spending category.
-#     Use this when the user asks to set up or create a new budget.
-#     """
-#     # TODO: Initialize your DB session here and save to the database
-#     # _save_budget(db, user_id, category, limit_amount)
-#     db = LocalSession()  # Placeholder for actual DB session initialization
-#     existing = (
-#         db.query(Budget)
-#         .filter(
-#             Budget.user_id == current_user.id,
-#             Budget.category == payload.category,
-#         )
-#         .first()
-#     )
-
-#     if existing:
-#         raise HTTPException(
-#             status_code=400, detail="Budget for this category already exists"
-#         )
-#     budget = Budget(**payload.model_dump(), user_id=current_user.id)
-#     db.add(budget)
-#     db.commit()
-#     db.refresh(budget)
-#     return budget
-
-#     return f"Successfully created a budget of {limit_amount} EUR for {category}."
-
-# def set_savings_goal(name: str, target_amount: float, deadline_str: str) -> str:
-#     """
-#     Creates a new savings goal.
-#     deadline_str must be in YYYY-MM-DD format.
-#     """
-#     # TODO: DB logic to save the goal
-#     return f"Savings goal '{name}' set for {target_amount} EUR by {deadline_str}."
-
-# def create_budget(
-#     payload: BudgetCreate,
-#     db: Session = Depends(get_db),
-#     current_user: User = Depends(get_current_user),
-# ):
-    
