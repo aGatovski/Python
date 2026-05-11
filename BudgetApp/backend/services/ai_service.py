@@ -1,6 +1,10 @@
 import os
 from dotenv import load_dotenv
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
+from models import category
+from schemas import budget
+from models.budget import Budget
 from services.merchant_service import _lookup_merchant, get_categories, _save_merchant
 from services.analytics_service import get_monthly_summary, get_expenses_by_category
 from services.budget_service import calculate_budget_status
@@ -14,9 +18,9 @@ from dateutil.relativedelta import relativedelta
 load_dotenv()
 
 _client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
-_CHAT_MODEL = "gemini-2.5-flash"
+_CHAT_MODEL = "gemini-2.5-flash-lite"
 
-def _build_financial_context(user_id: int, db: Session) -> str:
+def build_financial_context(user_id: int, db: Session) -> str:
     """
     Build a plain-text financial context block from pre-calculated data.
     The AI model receives only this context — it never computes financial values itself.
@@ -69,7 +73,47 @@ def _build_financial_context(user_id: int, db: Session) -> str:
     #print(lines)
     return "\n".join(lines)
 
-def chat_with_history(message: str, history: list[dict], session_context: str) -> str:
+
+def build_tools(user_id: int, db: Session) -> list:
+    """
+    Build a list of tools that the AI can call to perform actions.
+    Each tool is a Python function with a docstring that explains when to use it.
+    The model decides autonomously whether to call a tool based on the conversation.
+    """
+    # 1. Define your tools as standard Python functions with type hints and docstrings.
+    # The model uses the docstring to understand WHEN to trigger this tool.
+    def create_new_budget(category: str, limit_amount: float) -> str:
+        """
+        Creates a new monthly budget for a specific spending category.
+        Use this when the user asks to set up or create a new budget.
+        """
+        try:
+            print(f"[TOOL] create_new_budget called: category={category}, limit={limit_amount}")
+
+            existing = (
+                db.query(Budget)
+                .filter(Budget.user_id == user_id, Budget.category == category)
+                .first()
+            )
+
+            if existing:
+                return f"A budget for '{category}' already exists."
+
+            new_budget = Budget(user_id=user_id, category=category, limit=limit_amount)
+            db.add(new_budget)
+            db.commit()
+            db.refresh(new_budget)
+
+            print(f"[TOOL] Budget created: id={new_budget.id}")
+            return f"Successfully created a budget of {limit_amount} EUR for {category}."  # ✅
+
+        except Exception as e:
+            db.rollback()
+            print(f"[TOOL] FAILED: {e}")
+            return f"Failed to create budget: {str(e)}"
+    
+    return [create_new_budget]
+def chat_with_history(user_id: int, db:Session, message: str, history: list[dict], session_context: str) -> str:
     """
     Send a message to Gemini with full conversation history.
     
@@ -87,8 +131,11 @@ def chat_with_history(message: str, history: list[dict], session_context: str) -
         "Do NOT compute, estimate, or invent any financial figures — all numbers are pre-calculated. "
         "If the data does not contain enough information to answer, say so clearly. "
         "Be concise, specific, and actionable. When suggesting improvements, reference actual numbers from the data.\n\n"
+        "When creating budgets or goals, accept ANY category name the user provides. "
+        "Do NOT restrict categories to ones already present in the financial data.\n\n"
         f"FINANCIAL DATA:\n{session_context}"
     )
+    tools = build_tools(user_id=user_id, db=db)
 
     # Build Gemini's multi-turn contents array from history
     # Gemini uses "model" (not "assistant") for AI turns
@@ -110,12 +157,14 @@ def chat_with_history(message: str, history: list[dict], session_context: str) -
         contents=contents,
         config=types.GenerateContentConfig(
             system_instruction=system_instruction,
+            tools=tools,  # Register the tool for potential use
             temperature=0.4,
             max_output_tokens=1024
         ) 
     )
-
+    print(f"[GEMINI] finish_reason: {response.candidates[0].finish_reason}")
     return response.text.strip()
+
 
 async def chat(message: str, financial_context: str) -> str:
     """
@@ -179,6 +228,77 @@ def run_scenario(scenario: str, financial_context: str) -> str:
     return response.text
 
 
-# def build_context(summary: dict, by_category: list) -> str:
-#     """Public helper so routers can build context without importing internals."""
-#     return _build_financial_context(summary, by_category)
+# 1. Define your tools as standard Python functions with type hints and docstrings.
+# The model uses the docstring to understand WHEN to trigger this tool.
+def create_new_budget(user_id: int, db: Session, category: str, limit_amount: float) -> str:
+    """
+    Creates a new monthly budget for a specific spending category.
+    Use this when the user asks to set up or create a new budget.
+    """
+    existing = (
+        db.query(Budget)
+        .filter(
+            Budget.user_id == user_id,
+            Budget.category == category,
+        )
+        .first()
+    )
+
+    if existing:
+        raise HTTPException(
+            status_code=400, detail="Budget for this category already exists"
+        )
+    budget = Budget(user_id=user_id, category=category, limit_amount=limit_amount)
+    db.add(budget)
+    db.commit()
+    db.refresh(budget)
+    return f"Successfully created a budget of {limit_amount} EUR for {category}."
+    return budget
+    
+    
+
+# 1. Define your tools as standard Python functions with type hints and docstrings.
+# The model uses the docstring to understand WHEN to trigger this tool.
+# def create_new_budget(category: str, limit_amount: float) -> str:
+#     """
+#     Creates a new monthly budget for a specific spending category.
+#     Use this when the user asks to set up or create a new budget.
+#     """
+#     # TODO: Initialize your DB session here and save to the database
+#     # _save_budget(db, user_id, category, limit_amount)
+#     db = LocalSession()  # Placeholder for actual DB session initialization
+#     existing = (
+#         db.query(Budget)
+#         .filter(
+#             Budget.user_id == current_user.id,
+#             Budget.category == payload.category,
+#         )
+#         .first()
+#     )
+
+#     if existing:
+#         raise HTTPException(
+#             status_code=400, detail="Budget for this category already exists"
+#         )
+#     budget = Budget(**payload.model_dump(), user_id=current_user.id)
+#     db.add(budget)
+#     db.commit()
+#     db.refresh(budget)
+#     return budget
+
+#     return f"Successfully created a budget of {limit_amount} EUR for {category}."
+
+# def set_savings_goal(name: str, target_amount: float, deadline_str: str) -> str:
+#     """
+#     Creates a new savings goal.
+#     deadline_str must be in YYYY-MM-DD format.
+#     """
+#     # TODO: DB logic to save the goal
+#     return f"Savings goal '{name}' set for {target_amount} EUR by {deadline_str}."
+
+# def create_budget(
+#     payload: BudgetCreate,
+#     db: Session = Depends(get_db),
+#     current_user: User = Depends(get_current_user),
+# ):
+    
