@@ -3,3 +3,4 @@ from .transaction import TransactionCreate, TransactionUpdate, TransactionOut
 from .category import CategoryCreate, CategoryUpdate, CategoryOut
 from .budget import BudgetCreate, BudgetUpdate, BudgetOut, BudgetStatus
 from .goal import GoalCreate, GoalUpdate, GoalOut, GoalForecast
+from .ai import ChatMessage, ChatRequest, ScenarioRequest
