@@ -1,4 +1,11 @@
 venv/
-__pychache__/
+.venv/
+__pycache__/
+**/__pycache__/
 *.pyc
+*.pyo
 .env
+*.joblib
+.git/
+.gitignore
+*.egg-info/
