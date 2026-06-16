@@ -1,60 +1,61 @@
-import csv
+
+from fastapi import UploadFile
+import pandas as pd
 import io
 from datetime import date
 from typing import List
-
+from services.classifier_service import clean_description, extract_merchant
+from models.transaction import Transaction
 from sqlalchemy.orm import Session
 from services.transactions_service import categorize_transaction
-#from services.ai_service import categorize_transaction
-from fastapi import HTTPException, UploadFile
 
+REQUIRED_COLUMNS_REVOLUT = {
+    "Type",
+    "Started Date",
+    "Amount",
+    "Description"
+}
 
-# date , amount ,cat , description OK
-async def parse_transactions_csv(file: UploadFile, db: Session) -> List[dict]:
+async def parse_transactions_csv(imported_file: UploadFile, user_id: int, db: Session) -> List[Transaction]:
     """
-    Parse an uploaded CSV file into a list of transaction dicts.
-    Minimum required columns: amount, description, date.
-    Optional columns: category, is_fixed.
+    Parse an uploaded CSV file into a list of Transaction.
     """
-    content = await file.read()
-    content_str = content.decode("utf-8")
-    reader = csv.DictReader(io.StringIO(content_str))
+    try:
+        contents = await imported_file.read()
+        df = pd.read_csv(io.BytesIO(contents), encoding="utf-8-sig")
 
-    if reader.fieldnames is None:
-        raise HTTPException(
-            status_code=400, detail="CSV file is empty or has no headers"
-        )
-
-    date_col = next(col for col in reader.fieldnames if "date" in col.lower())
-    description_col = next(
-        col for col in reader.fieldnames if "description" in col.lower()
-    )
-    amount_col = next(col for col in reader.fieldnames if "amount" in col.lower())
-
+    except UnicodeDecodeError:
+        raise ValueError("File encoding not supported. Save the CSV as UTF-8 and try again.")
+    
+    except Exception as e:
+        raise ValueError(f"Cound not read file: {str(e)}")
+    
+    missing = [col for col in REQUIRED_COLUMNS_REVOLUT if col not in df.columns]
+    
+    if missing:
+        raise ValueError(f"CSV is missing required columns: {missing}")
+    
     transactions = []
-    for i, row in enumerate(reader, start=2):  # row 1 = header
+    for i, row in df.iterrows():
         try:
-            date_str = row[date_col].strip()
-            amount = float(row[amount_col].strip())
-            description = row[description_col].strip()
-            category = categorize_transaction(description, db)
+            tx_type = row["Type"]
+            tx_date = row["Started Date"]
+            desc_clean = clean_description(text=row["Description"])
+            amount = row["Amount"]
+            merchant = extract_merchant(desc_clean=desc_clean)
+            category, src = categorize_transaction(tx_type=tx_type, amount=amount, description=desc_clean, merchant=merchant)
 
-            transactions.append(
-                {
-                    "date": date_str,
-                    "amount": amount,
-                    "category": category,
-                    "description": description,
-                }
-            )
-            # print(f"Parsed row {i}: date={date_str}, amount={amount}, description='{description}', categorized as '{category}'")
-        except (ValueError, KeyError) as exc:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Invalid data on CSV row {i}: {exc}",
-            )
+            tx = Transaction(user_id=user_id, type=tx_type, date=tx_date, amount=amount, 
+                            description=desc_clean, merchant=merchant, category=category, category_src=src)
+        
+            transactions.append(tx)
+            db.add(tx)
 
+        except Exception as e:
+            raise ValueError(f"Error on row {i+1}: {str(e)}")
+        
     return transactions
+    
 
 # Not touched
 def export_transactions_csv(transactions: List[dict]) -> str:

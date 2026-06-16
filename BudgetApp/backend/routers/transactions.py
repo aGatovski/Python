@@ -64,34 +64,47 @@ async def import_transactions(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    rows = await parse_transactions_csv(file, db)
-    created = []
+    try:
+        transactions = await parse_transactions_csv(imported_file=file, user_id=current_user.id, db=db)
+        created = []
 
-    for row in rows:
-        existing = (
-            db.query(Transaction)
-            .filter(
-                Transaction.user_id == current_user.id,
-                Transaction.date == row["date"],
-                Transaction.amount == row["amount"],
-                Transaction.description == row["description"],
-                Transaction.category == row["category"],
+        for tx in transactions:
+            existing = (
+                db.query(Transaction)
+                .filter(
+                    Transaction.user_id == current_user.id,
+                    Transaction.type == tx.type,
+                    Transaction.date == tx.date,
+                    Transaction.amount == tx.amount,
+                    Transaction.description == tx.description
+                )
+                .first()
             )
-            .first()
-        )
 
-        if existing:
-            # Skip duplicate transaction
-            continue
+            if existing:
+                # Skip duplicate transaction
+                continue
 
-        tx = Transaction(**row, user_id=current_user.id)
-        db.add(tx)
-        created.append(tx)
+            db.add(tx)
+            created.append(tx)
 
-    db.commit()
-    for tx in created:
-        db.refresh(tx)
-    return created
+        db.commit()
+    
+        for tx in created:
+            db.refresh(tx)
+        return created
+    
+    except HTTPException:
+        raise
+
+    except ValueError as e:
+        # Raised intentionally for bad input - wrong CSV format...
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+    
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Import failed: {str(e)}")
 
 
 @router.put("/{tx_id}", response_model=TransactionOut)
