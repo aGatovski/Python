@@ -46,6 +46,7 @@ export interface DashboardData {
 
 /** Navigation page identifiers */
 export type NavPage =
+  | 'login'
   | 'dashboard'
   | 'transactions'
   | 'budget'

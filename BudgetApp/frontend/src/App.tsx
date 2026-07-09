@@ -7,6 +7,7 @@ import BudgetsPage from './pages/BudgetsPage'
 import AnalyticsPage from './pages/AnalyticsPage'
 import GoalsPage from './pages/GoalsPage'
 import AIAssistantPage from './pages/AIAssistantPage'
+import LoginPage from './pages/LoginPage'
 
 /**
  * Root application component.
@@ -26,6 +27,9 @@ function App() {
     switch (activePage) {
       case 'dashboard':
         return <DashboardPage onNavigate={setActivePage} />
+
+      case 'login':
+        return <LoginPage/>
 
       case 'transactions':
         return <TransactionsPage />

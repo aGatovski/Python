@@ -51,25 +51,15 @@ def decode_token(token: str) -> dict:
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-
-def get_current_user(db: Session = Depends(get_db)) -> User:
-    # AUTH DISABLED FOR DEVELOPMENT — returns the first user in the DB
-    user = db.query(User).filter(User.id == 1).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="Dev user not found — register a user first")
-    return user
-"""
-def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
-    db: Session = Depends(get_db),
-) -> User:
+def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+                     db: Session = Depends(get_db)) -> User:
     payload = decode_token(credentials.credentials)
     if payload.get("type") != "access":
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token type")
-    user_id: int = payload.get("sub")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token type.")
+    user_id = payload.get("sub")
     if user_id is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload.")
     user = db.query(User).filter(User.id == int(user_id)).first()
     if user is None or not user.is_active:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found or inactive")
-    return user"""
+          raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found or inactive.")
+    return user
