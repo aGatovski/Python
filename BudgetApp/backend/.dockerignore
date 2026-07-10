@@ -9,3 +9,6 @@ __pycache__/
 .git/
 .gitignore
 *.egg-info/
+notebooks/
+tests/
+*.md

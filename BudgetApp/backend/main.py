@@ -5,24 +5,21 @@ from routers import analytics, auth, budgets, categories, goals, transactions, u
 from models import user, transaction, budget, category, goal
 from database import Base, SessionLocal, engine
 from services.merchant_service import load_merchant_cache
-from services.transactions_service import train_classifier
 
-Base.metadata.create_all(bind=engine)
-
+# Base.metadata.create_all(bind=engine)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     db = SessionLocal()
     try:
         load_merchant_cache(db)
-        train_classifier()
     except Exception as e:
         print(f"Failed on start up: {e}")
-        raise  
+        raise
     finally:
         db.close()
-    
-    yield 
+
+    yield
 
 
 app = FastAPI(
