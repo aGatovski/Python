@@ -36,12 +36,12 @@ def load_bundle() -> dict:
     return joblib.load(path)
 
 
-def categorize_transaction(tx_type: str, amount: float, description: str, merchant:str) -> Tuple[str, str]:
+async def categorize_transaction(tx_type: str, amount: float, description: str, merchant:str) -> Tuple[str, str]:
     """Categorize a transaction. Returns a tuple[category, source]"""
-    
+
     prediction, confidence = predict_category(tx_type=tx_type, amount=amount, merchant=merchant, desc_clean=description)
-   
-    if confidence >= 0.5:  
+
+    if confidence >= 0.5:
         return prediction, "model"
 
     categories = load_bundle()["label_encoder"].classes_
@@ -60,33 +60,33 @@ def categorize_transaction(tx_type: str, amount: float, description: str, mercha
     )
 
     try:
-        response = _client.models.generate_content(
-        model=_CHAT_MODEL, 
+        response = await _client.aio.models.generate_content(
+        model=_CHAT_MODEL,
         contents=prompt,
         config=types.GenerateContentConfig(
-            temperature=0.1,  
-            max_output_tokens=20, 
+            temperature=0.1,
+            max_output_tokens=20,
             )
         )
 
         if not response or not response.text:
             print(f"LLM returned empty response for {merchant}.")
-            return "Other", "fallback" 
-        
+            return "Other", "fallback"
+
         if response.text.strip() in categories:
             return response.text.strip(), "llm"
-        
+
         else:
-            return "Other", "fallback" 
-        
+            return "Other", "fallback"
+
     except genai.errors.APIError as e:
         print(f"Gemini API error for {merchant}: {e}")
         return "Other", "fallback"
-    
+
     except genai.errors.ClientError as e:
         print(f"Gemini client error for {merchant}: {e}")
         return "Other", "fallback"
-    
+
     except Exception as e:
         print(f"Unexpected error when calling LLM for {merchant}: {e}")
         return "Other", "fallback"

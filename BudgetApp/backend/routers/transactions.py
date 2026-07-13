@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query, status
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query, status, BackgroundTasks
 from sqlalchemy.orm import Session
 from sqlalchemy import extract
 from typing import Optional, List
@@ -9,6 +9,7 @@ from models.transaction import Transaction
 from schemas.transaction import TransactionCreate, TransactionUpdate, TransactionOut
 from utils.auth import get_current_user
 from utils.csv_handler import parse_transactions_csv
+from services.transaction_service import process_import
 
 router = APIRouter()
 
@@ -56,56 +57,27 @@ def create_transaction(
     return tx
 
 
-@router.post(
-    "/import", response_model=List[TransactionOut], status_code=status.HTTP_201_CREATED
-)
+@router.post("/import", status_code=status.HTTP_202_ACCEPTED)
 async def import_transactions(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
-    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     try:
-        transactions = await parse_transactions_csv(imported_file=file, user_id=current_user.id, db=db)
-        created = []
+        rows = await parse_transactions_csv(file)
 
-        for tx in transactions:
-            existing = (
-                db.query(Transaction)
-                .filter(
-                    Transaction.user_id == current_user.id,
-                    Transaction.type == tx.type,
-                    Transaction.date == tx.date,
-                    Transaction.amount == tx.amount,
-                    Transaction.description == tx.description
-                )
-                .first()
-            )
-
-            if existing:
-                # Skip duplicate transaction
-                continue
-
-            db.add(tx)
-            created.append(tx)
-
-        db.commit()
-    
-        for tx in created:
-            db.refresh(tx)
-        return created
-    
     except HTTPException:
-        raise
-
+        raise 
     except ValueError as e:
         # Raised intentionally for bad input - wrong CSV format...
-        db.rollback()
         raise HTTPException(status_code=400, detail=str(e))
     
     except Exception as e:
-        db.rollback()
         raise HTTPException(status_code=500, detail=f"Import failed: {str(e)}")
 
+    background_tasks.add_task(process_import, rows, current_user.id)
+
+    return {"status": "processing", "rows": len(rows)}
 
 @router.put("/{tx_id}", response_model=TransactionOut)
 def update_transaction(
